@@ -13,6 +13,7 @@
 #include <vector>
 #include <numeric>
 #include <random>
+#include <algorithm>
 
 // perlin noise
 class perlin {
