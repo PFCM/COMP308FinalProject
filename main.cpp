@@ -8,6 +8,7 @@
 
 #include "noise.h"
 #include "vorton.h"
+#include "quaternion.h"
 
 #include <GL/glut.h>
 #include <iostream>
@@ -19,6 +20,7 @@
 
 GLuint gMainWindow;
 GLint gWidth=500, gHeight=500;
+
 
 basicflow flow;
 std::vector<vorton> vortons;
