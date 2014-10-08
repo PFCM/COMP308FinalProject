@@ -14,6 +14,7 @@
 #include <numeric>
 #include <random>
 #include <algorithm>
+#include <cmath>
 
 // perlin noise
 class perlin {
@@ -162,5 +163,47 @@ public:
     }
 };
 
+// some random utilities
+class randutils {	
+public:
+	static std::mt19937 engine;
+	static std::uniform_real_distribution<float> uniform_bipolar;
+	static std::uniform_real_distribution<float> canonical;
+	static std::normal_distribution<float> normal;
+
+	/** returns a random point inside a sphere. Subsequent points may very well overlap */
+	static point3 sphere_point( point3 &origin, float radius ) {
+		// randomly generate spherical coordinates
+		float phi = uniform_bipolar(engine) * M_PI;
+		float theta = uniform_bipolar(engine) * M_PI;
+		float rad = canonical(engine) * radius;
+		// convert to cartesian
+		point3 p;
+		p[0] = rad * sin(theta) * cos(phi);
+		p[1] = rad * sin(theta) * sin(phi);
+		p[2] = rad * cos(theta);
+
+		p = p + origin; // translate appropriately
+
+		return p;
+	}
+
+	/** returns a random point inside a cube, normally distributed about the given origin.
+	    No reason why they may not overlap */
+	static point3 cube_normal_point( point3 &origin, float radius ) {
+		point3 p;
+		p[0] = normal(engine) * radius;
+		p[1] = normal(engine) * radius;
+		p[2] = normal(engine) * radius;
+		p = p + origin;
+		return p;
+	}
+};
+
+std::random_device d;
+std::mt19937 randutils::engine = std::mt19937(d());
+std::uniform_real_distribution<float> randutils::uniform_bipolar = std::uniform_real_distribution<float>(-1.0f,1.0f);
+std::normal_distribution<float> randutils::normal = std::normal_distribution<float>();
+std::uniform_real_distribution<float> randutils::canonical = std::uniform_real_distribution<float>(0.0f,1.0f);
 
 #endif

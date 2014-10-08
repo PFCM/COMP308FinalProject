@@ -106,9 +106,9 @@ void display() {
     glMatrixMode(GL_MODELVIEW);
     glEnable(GL_LIGHT0);
     glEnable(GL_LIGHTING);
-    glPointSize(1);
+    /*glPointSize(1);
     glColor3f(0.0,0.5,0.5);
-    /* for (vorton &v : vortons) {
+    for (vorton &v : vortons) {
         //glBegin(GL_POINTS);
         //glVertex3f(v.mPos[0], v.mPos[1], v.mPos[2]);
         glPushMatrix();
@@ -216,11 +216,14 @@ void init() {
     std::random_device dev;
     std::mt19937 rng(dev());
     std::uniform_real_distribution<float> dist(-0.5,0.5);
-    for (unsigned i = 0; i < 20; i++) {
+    point3 o;
+    o[1] = -0.5f;
+    for (unsigned i = 0; i < 30; i++) {
         vorton v;
-        v.mPos[0] += dist(rng);
+	/* v.mPos[0] += dist(rng);
         v.mPos[1] += dist(rng)-0.5;
-        v.mPos[2] += dist(rng);
+        v.mPos[2] += dist(rng);*/
+	v.mPos = randutils::sphere_point(o, 0.5);
         
         v.mVorticity[0] += dist(rng);
         v.mVorticity[1] += dist(rng);
@@ -228,11 +231,13 @@ void init() {
         v.mVorticity = v.mVorticity.normalise();
         vortons.push_back(v);
     }
-    for (unsigned i = 0; i < 100000; i++) {
+    for (unsigned i = 0; i < 40000; i++) {
         particle p;
-        p.mPos[0] += dist(rng)*0.5;
-        p.mPos[1] += dist(rng)*0.5-0.5;
-        p.mPos[2] += dist(rng)*0.5;
+        /*p.mPos[0] += dist(rng);
+        p.mPos[1] += dist(rng)-0.5;
+        p.mPos[2] += dist(rng);*/
+	
+	p.mPos = randutils::sphere_point(o, 0.5f);
         tracers.push_back(p);
     }
 }
