@@ -9,6 +9,7 @@
 #include "noise.h"
 #include "vorton.h"
 #include "quaternion.h"
+#include "define.h"
 
 #include <GL/glut.h>
 #include <iostream>
@@ -20,6 +21,10 @@
 
 GLuint gMainWindow;
 GLint gWidth=500, gHeight=500;
+
+G308_Point mousePos;
+G308_Point lastMousePos;
+quaternion cameraRotation;
 
 
 basicflow flow;
@@ -33,13 +38,18 @@ std::chrono::high_resolution_clock::duration gFramePeriod; // actual time in bet
 float gTime;
 float gTimeStep = 0.005;
 
+// FUNCTION DECLARATIONS
 void display();
 void idle();
 void init();
 void reshape(int x, int y);
+void mouse(int state, int button, int x, int y);
+void mouseDrag(int x, int y);
 
 // prints to screen
 void printtoscreen(void *font, std::string s);
+// length of G308_Point
+float length(G308_Point &p);
 
 
 int main(int argc, char * argv[])
@@ -64,6 +74,8 @@ int main(int argc, char * argv[])
     
     glutDisplayFunc(display);
     glutIdleFunc(idle);
+    glutMouseFunc(mouse);
+    glutMotionFunc(mouseDrag);
     
     init();
     
@@ -106,6 +118,11 @@ void display() {
 //    glEnd();
     
     glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    float mat[16];
+    cameraRotation.toMatrix(mat);
+    glMultMatrixf(mat);
+
     glEnable(GL_LIGHT0);
     glEnable(GL_LIGHTING);
     /*glPointSize(1);
@@ -152,7 +169,7 @@ void display() {
     glMatrixMode(GL_PROJECTION);
     glPopMatrix();
     glMatrixMode(GL_MODELVIEW);
-    
+    glPopMatrix();
     glutSwapBuffers();
 }
 
@@ -161,6 +178,39 @@ void printtoscreen(void *font, std::string s) {
     for (auto c : s) {
         glutBitmapCharacter(font, c);
     }
+}
+
+float length(G308_Point &p) {
+	return sqrt(p.x*p.x + p.y*p.y + p.z*p.z);
+}
+
+void mouse(int button, int state, int x, int y) {
+	if (state == GLUT_DOWN) {
+		mousePos.x = x;
+		mousePos.y = y;
+	}
+}
+void mouseDrag(int x, int y) {
+	lastMousePos = mousePos;
+	mousePos.x = x;
+	mousePos.y = y;
+
+	// arcball all over again
+	G308_Point scaledMouse;
+	G308_Point scaledLastMouse;
+	scaledMouse.x = ((mousePos.x / gWidth) - .5) * .9; // arcball radius .9
+	scaledMouse.y = ((mousePos.y / gHeight) - .5) * .9; 
+	scaledLastMouse.x = ((lastMousePos.x / gWidth) - .5) * .9;
+	scaledLastMouse.y = ((lastMousePos.y / gHeight) - .5) * .9;
+	scaledMouse.z = 0;
+	scaledLastMouse.z = 0; // so the length doesn't get stucj with a garbage value
+
+	scaledMouse.z = sqrt(1 - pow(length(scaledMouse),2));
+	scaledLastMouse.z = sqrt(1 - pow(length(scaledLastMouse),2));
+
+	quaternion q(scaledLastMouse, scaledMouse);
+	cameraRotation = (cameraRotation * q).normalise();
+	glutPostRedisplay();
 }
 
 void idle() {
