@@ -7,11 +7,11 @@ LIBS = -lm -lGL -lGLU -lglut
 all: release
 
 release: CFLAGS += -O3
-release: main.o
+release: main.o quaternion.o
 	$(CC) -o $@ $^ $(LIBS) $(LPATH)
 
 debug: CFLAGS += -g
-debug: main.o
+debug: main.o quaternion.o
 	$(CC) -o $@ $^ $(LIBS) $(LPATH)
 
 .cpp.o:
