@@ -283,7 +283,7 @@ void init() {
         v.mVorticity = v.mVorticity.normalise();
         vortons.push_back(v);
     }
-    for (unsigned i = 0; i < 40000; i++) {
+    for (unsigned i = 0; i < 4000; i++) {
         particle p;
         /*p.mPos[0] += dist(rng);
         p.mPos[1] += dist(rng)-0.5;
