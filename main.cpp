@@ -36,7 +36,7 @@ auto gAnimationPeriod = std::chrono::duration_cast<std::chrono::high_resolution_
 std::chrono::high_resolution_clock::duration gFramePeriod; // actual time in between
 
 float gTime;
-float gTimeStep = 0.005;
+float gTimeStep = 0.001;
 
 // FUNCTION DECLARATIONS
 void display();
@@ -125,7 +125,7 @@ void display() {
 
     glEnable(GL_LIGHT0);
     glEnable(GL_LIGHTING);
-    /*glPointSize(1);
+    glPointSize(1);
     glColor3f(0.0,0.5,0.5);
     for (vorton &v : vortons) {
         //glBegin(GL_POINTS);
@@ -135,7 +135,7 @@ void display() {
         glutSolidSphere(.03, 8,8);
         glPopMatrix();
         //glEnd();
-	}*/
+	}
     
     glDisable(GL_LIGHTING);
     glEnable(GL_POINT_SMOOTH);
@@ -223,13 +223,16 @@ void idle() {
         
         vec3 midx; // for the midpoint integration, which is more stable
         for (vorton &v : vortons) {
-            flow.get_velocity(v.mPos, v.mVel);
+            flow.vorticity_velocity(v.mPos, v.mVel, v.mVorticity);
+            //flow.get_velocity(v.mPos, v.mVel);
             midx = v.mPos + 0.5f*gTimeStep*v.mVel;
             flow.get_velocity(midx, v.mVel);
-            v.mVel[1] += 1;
+            //v.mVorticity = v.mVorticity.normalise();
+            //v.mVel[1] += 1;
             v.mPos = v.mPos + (gTimeStep*v.mVel)*0.8;
-            flow.advance_time(gTimeStep);
         }
+        
+        flow.advance_time(gTimeStep);
         std::unordered_set<particle*> dead;
         for (particle &p : tracers) {
             p.mVel[0] = 0;
@@ -270,7 +273,7 @@ void init() {
     std::uniform_real_distribution<float> dist(-0.5,0.5);
     point3 o;
     o[1] = -0.5f;
-    for (unsigned i = 0; i < 30; i++) {
+    for (unsigned i = 0; i < 10; i++) {
         vorton v;
 	/* v.mPos[0] += dist(rng);
         v.mPos[1] += dist(rng)-0.5;
@@ -283,7 +286,7 @@ void init() {
         v.mVorticity = v.mVorticity.normalise();
         vortons.push_back(v);
     }
-    for (unsigned i = 0; i < 4000; i++) {
+    for (unsigned i = 0; i < 10000; i++) {
         particle p;
         /*p.mPos[0] += dist(rng);
         p.mPos[1] += dist(rng)-0.5;

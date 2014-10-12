@@ -128,8 +128,40 @@ public:
         
         // finite differences yay
         result[0] = (pDiffY[2] - pDiffZ[1]) / (2*dx);
-        result[1] = (pDiffZ[1] - pDiffX[2]) / (2*dx);
-        result[2] = (pDiffX[1] - pDiffZ[0]) / (2*dx);
+        result[1] = (pDiffZ[0] - pDiffX[2]) / (2*dx);
+        result[2] = (pDiffX[1] - pDiffY[0]) / (2*dx);
+        result[1] += 0.6;
+    }
+    
+    // updates the velocity and the vorticity at the same time
+    void vorticity_velocity(const vec3 &pos, vec3 &vel, vec3 &vort) {
+        // the velocity is the curl of the (implicit) potential field
+        // and the vorticity is the curl of the (derived) velocity field
+        // so we have to sample the velocity SIX times (optimising that noise is looking like a good move)
+        vec3 vPlusX,vNegX,vPlusY, vNegY, vPlusZ, vNegZ;
+        vec3 p1,p2,p3,p4,p5,p6;
+        p1 = p2 = p3 = p4 = p5 = p6 = pos;
+        p1[0] += dx;
+        p2[0] -= dx;
+        p3[1] += dx;
+        p4[1] -= dx;
+        p5[2] += dx;
+        p6[2] -= dx;
+        get_velocity(p1, vPlusX);
+        get_velocity(p2, vNegX);
+        get_velocity(p3, vPlusY);
+        get_velocity(p4, vNegY);
+        get_velocity(p5, vPlusZ);
+        get_velocity(p6, vNegZ);
+        
+        // now results
+        get_velocity(pos, vel);
+        vec3 vDiffX = vPlusX - vNegX;
+        vec3 vDiffY = vPlusY - vNegY;
+        vec3 vDiffZ = vPlusZ - vNegZ;
+        vort[0] = (vDiffY[2] - vDiffZ[1]) / (2*dx);
+        vort[1] = (vDiffZ[0] - vDiffX[2]) / (2*dx);
+        vort[2] = (vDiffX[1] - vDiffY[0]) / (2*dx);
     }
     
 };
