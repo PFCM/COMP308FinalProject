@@ -10,6 +10,7 @@
 #include "vorton.h"
 #include "quaternion.h"
 #include "define.h"
+#include "concurrencytools.h"
 
 #include <GL/glut.h>
 #include <iostream>
@@ -48,6 +49,8 @@ void init();
 void reshape(int x, int y);
 void mouse(int state, int button, int x, int y);
 void mouseDrag(int x, int y);
+
+void update_tracer(unsigned); // updates a single tracer
 
 // prints to screen
 void printtoscreen(void *font, std::string s);
@@ -128,9 +131,9 @@ void display() {
 
     glEnable(GL_LIGHT0);
     glEnable(GL_LIGHTING);
-    glPointSize(3);
-    /*glColor3f(0.0,0.5,0.5);
-    for (vorton &v : vortons) {
+    glPointSize(1);
+    glColor3f(0.0,0.5,0.5);
+    /*for (vorton &v : vortons) {
         //glBegin(GL_POINTS);
         //glVertex3f(v.mPos[0], v.mPos[1], v.mPos[2]);
         glPushMatrix();
@@ -144,7 +147,7 @@ void display() {
     glEnable(GL_POINT_SMOOTH);
     glEnable (GL_BLEND);
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glColor4f(0.2, 0.2, 0.2, 0.1);
+    glColor4f(0.0, 0.2, 0.2, 0.1);
     for (particle &p : tracers) {
         if (particle_lines) {
         glBegin(GL_LINES);
@@ -225,6 +228,25 @@ void mouseDrag(int x, int y) {
 	glutPostRedisplay();
 }
 
+void update_tracer(unsigned i) {
+    particle &p = tracers[i];
+    vec3 midx;
+    p.mVel[0] = 0;
+    p.mVel[1] = 1;
+    p.mVel[2] = 0;
+    for (vorton &v: vortons) { //TODO: optmise with spatial partitioning
+        v.get_velocity_contribution(p.mVel, p.mPos);
+    }
+    
+    // midpoint integration again, may as well be consistent
+    midx = p.mPos + 0.5f*gTimeStep*p.mVel;
+    for (vorton &v: vortons) { //TODO: optmise with spatial partitioning
+        v.get_velocity_contribution(p.mVel, midx);
+    }
+    p.mPos = p.mPos + (gTimeStep*p.mVel)*0.8;
+    
+}
+
 void idle() {
     static auto lastTime = std::chrono::high_resolution_clock::now();
     auto currentTime = std::chrono::high_resolution_clock::now();
@@ -245,27 +267,28 @@ void idle() {
         }
         
         flow.advance_time(gTimeStep);
-        std::unordered_set<particle*> dead;
-        for (particle &p : tracers) {
-            p.mVel[0] = 0;
-            p.mVel[1] = 1;
-            p.mVel[2] = 0;
-            for (vorton &v: vortons) { //TODO: optmise with spatial partitioning
-                v.get_velocity_contribution(p.mVel, p.mPos);
-            }
-            
-            // midpoint integration again, may as well be consistent
-            midx = p.mPos + 0.5f*gTimeStep*p.mVel;
-            for (vorton &v: vortons) { //TODO: optmise with spatial partitioning
-                v.get_velocity_contribution(p.mVel, midx);
-            }
-            p.mPos = p.mPos + (gTimeStep*p.mVel)*0.8;
-            
+        concurrent_tools::parallel_for(0, tracers.size(), update_tracer, 1000);
+//        std::unordered_set<particle*> dead
+//        for (particle &p : tracers) {
+//            p.mVel[0] = 0;
+//            p.mVel[1] = 1;
+//            p.mVel[2] = 0;
+//            for (vorton &v: vortons) { //TODO: optmise with spatial partitioning
+//                v.get_velocity_contribution(p.mVel, p.mPos);
+//            }
+//            
+//            // midpoint integration again, may as well be consistent
+//            midx = p.mPos + 0.5f*gTimeStep*p.mVel;
+//            for (vorton &v: vortons) { //TODO: optmise with spatial partitioning
+//                v.get_velocity_contribution(p.mVel, midx);
+//            }
+//            p.mPos = p.mPos + (gTimeStep*p.mVel)*0.8;
+//            
 	    /*  if (p.mPos[0] > 1.0 || p.mPos[0] < -1.0 ||
                 p.mPos[1] > 1.0 || p.mPos[1] < -1.0 ||
                 p.mPos[2] > 1.0 || p.mPos[1] < -1.0)
                 dead.insert(&p);*/
-        }
+ //       }
 	/* tracers.erase(std::remove_if(tracers.begin(), tracers.end(),
                                   [&](particle &p) {
                                       return dead.find(&p) != dead.end();
@@ -290,7 +313,7 @@ void init() {
 	/* v.mPos[0] += dist(rng);
         v.mPos[1] += dist(rng)-0.5;
         v.mPos[2] += dist(rng);*/
-	v.mPos = randutils::sphere_point(o, 0.5);
+	v.mPos = randutils::sphere_point(o, 0.25, false);
         
         v.mVorticity[0] += dist(rng);
         v.mVorticity[1] += dist(rng);
@@ -298,13 +321,13 @@ void init() {
         v.mVorticity = v.mVorticity.normalise();
         vortons.push_back(v);
     }
-    for (unsigned i = 0; i < 10000; i++) {
+    for (unsigned i = 0; i < 100000; i++) {
         particle p;
         /*p.mPos[0] += dist(rng);
         p.mPos[1] += dist(rng)-0.5;
         p.mPos[2] += dist(rng);*/
 	
-	p.mPos = randutils::sphere_point(o, 0.5f);
+	p.mPos = randutils::sphere_point(o, 0.5f,false);
         tracers.push_back(p);
     }
 }

@@ -99,7 +99,7 @@ protected:
     float dv; // for the other finite difference
     
 public:
-    curlnoise() : time(0), dx(1e-4), dv(1e-1) {}; // TODO: is this a sensible dx?
+    curlnoise() : time(0), dx(1e-4), dv(5e-2) {}; // TODO: is this a sensible dx?
     virtual ~curlnoise() {}
     
     // no prizes for guessing what this does
@@ -207,11 +207,11 @@ public:
 	static std::normal_distribution<float> normal;
 
 	/** returns a random point inside a sphere. Subsequent points may very well overlap */
-	static point3 sphere_point( point3 &origin, float radius ) {
+	static point3 sphere_point( point3 &origin, float radius, bool randrad=true ) {
 		// randomly generate spherical coordinates
 		float phi = uniform_bipolar(engine) * M_PI;
 		float theta = uniform_bipolar(engine) * M_PI;
-		float rad = canonical(engine) * radius;
+		float rad = (randrad)? canonical(engine) * radius: radius;
 		// convert to cartesian
 		point3 p;
 		p[0] = rad * sin(theta) * cos(phi);
