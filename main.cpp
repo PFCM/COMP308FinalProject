@@ -36,7 +36,10 @@ auto gAnimationPeriod = std::chrono::duration_cast<std::chrono::high_resolution_
 std::chrono::high_resolution_clock::duration gFramePeriod; // actual time in between
 
 float gTime;
-float gTimeStep = 0.01;
+float gTimeStep = 0.005;
+
+// DEBUGGING
+bool particle_lines = false;
 
 // FUNCTION DECLARATIONS
 void display();
@@ -125,8 +128,8 @@ void display() {
 
     glEnable(GL_LIGHT0);
     glEnable(GL_LIGHTING);
-    glPointSize(1);
-    glColor3f(0.0,0.5,0.5);
+    glPointSize(3);
+    /*glColor3f(0.0,0.5,0.5);
     for (vorton &v : vortons) {
         //glBegin(GL_POINTS);
         //glVertex3f(v.mPos[0], v.mPos[1], v.mPos[2]);
@@ -135,7 +138,7 @@ void display() {
         glutSolidSphere(.03, 8,8);
         glPopMatrix();
         //glEnd();
-	}
+	}*/
     
     glDisable(GL_LIGHTING);
     glEnable(GL_POINT_SMOOTH);
@@ -143,12 +146,18 @@ void display() {
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glColor4f(0.2, 0.2, 0.2, 0.1);
     for (particle &p : tracers) {
+        if (particle_lines) {
         glBegin(GL_LINES);
         glVertex3f(p.mPos[0], p.mPos[1], p.mPos[2]);
         glVertex3f(p.mPos[0]+p.mVel[0]*.06,
                    p.mPos[1]+p.mVel[1]*.06,
                    p.mPos[2]+p.mVel[2]*.06);
         glEnd();
+        } else {
+            glBegin(GL_POINTS);
+            glVertex3f(p.mPos[0], p.mPos[1], p.mPos[2]);
+            glEnd();
+        }
     }
     
     glMatrixMode(GL_PROJECTION);
