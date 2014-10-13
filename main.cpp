@@ -37,7 +37,7 @@ auto gAnimationPeriod = std::chrono::duration_cast<std::chrono::high_resolution_
 std::chrono::high_resolution_clock::duration gFramePeriod; // actual time in between
 
 float gTime;
-float gTimeStep = 0.01;
+float gTimeStep = 0.005;
 
 // DEBUGGING
 bool particle_lines = false;
@@ -147,7 +147,7 @@ void display() {
     glEnable(GL_POINT_SMOOTH);
     glEnable (GL_BLEND);
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glColor4f(0.0, 0.6, 0.6, 0.1);
+    glColor4f(0.0, 0.5, 0.5, 0.5);
     for (particle &p : tracers) {
         if (particle_lines) {
         glBegin(GL_LINES);
@@ -203,7 +203,12 @@ void mouse(int button, int state, int x, int y) {
 	if (state == GLUT_DOWN) {
 		mousePos.x = x;
 		mousePos.y = y;
+        
+        if (glutGetModifiers() == GLUT_ACTIVE_SHIFT) {
+            flow.seed_particles(15, 20000, vortons, tracers);
+        }
 	}
+    
 }
 void mouseDrag(int x, int y) {
 	lastMousePos = mousePos;
@@ -267,7 +272,7 @@ void idle() {
         }
         
         flow.advance_time(gTimeStep);
-        concurrent_tools::parallel_for(0, tracers.size(), update_tracer, 10000);
+        concurrent_tools::parallel_for(0, tracers.size(), update_tracer, 5000);
 //        std::unordered_set<particle*> dead
 //        for (particle &p : tracers) {
 //            p.mVel[0] = 0;
@@ -302,34 +307,7 @@ void init() {
     glClearColor(1.0, 1.0, 1.0, 1.0);
     reshape(gWidth, gHeight);
     
-    
-    std::random_device dev;
-    std::mt19937 rng(dev());
-    std::uniform_real_distribution<float> dist(-0.5,0.5);
-    point3 o;
-    o[1] = -0.5f;
-    for (unsigned i = 0; i < 20; i++) {
-        vorton v;
-	/* v.mPos[0] += dist(rng);
-        v.mPos[1] += dist(rng)-0.5;
-        v.mPos[2] += dist(rng);*/
-	v.mPos = randutils::sphere_point(o, 0.5f, false);
-        
-        v.mVorticity[0] += dist(rng);
-        v.mVorticity[1] += dist(rng);
-        v.mVorticity[2] += dist(rng);
-        v.mVorticity = v.mVorticity.normalise();
-        vortons.push_back(v);
-    }
-    for (unsigned i = 0; i < 20000; i++) {
-        particle p;
-        /*p.mPos[0] += dist(rng);
-        p.mPos[1] += dist(rng)-0.5;
-        p.mPos[2] += dist(rng);*/
-	
-	p.mPos = randutils::sphere_point(o, 0.5f,false);
-        tracers.push_back(p);
-    }
+    flow.seed_particles(15, 20000, vortons, tracers);
 }
 
 void reshape(int w, int h) {

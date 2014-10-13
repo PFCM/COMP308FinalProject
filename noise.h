@@ -10,11 +10,57 @@
 #define noisepart_noise_h
 #include "point.h"
 #include "interpolation.h"
+#include "vorton.h"
 #include <vector>
 #include <numeric>
 #include <random>
 #include <algorithm>
 #include <cmath>
+
+// some random utilities
+class randutils {
+public:
+	static std::mt19937 engine;
+	static std::uniform_real_distribution<float> uniform_bipolar;
+	static std::uniform_real_distribution<float> canonical;
+	static std::normal_distribution<float> normal;
+    
+	/** returns a random point inside a sphere. Subsequent points may very well overlap */
+	static point3 sphere_point( point3 &origin, float radius, bool randrad=true ) {
+		// randomly generate spherical coordinates
+		float phi = uniform_bipolar(engine) * M_PI;
+		float theta = uniform_bipolar(engine) * M_PI;
+		float rad = (randrad)? canonical(engine) * radius: radius;
+		// convert to cartesian
+		point3 p;
+		p[0] = rad * sin(theta) * cos(phi);
+		p[1] = rad * sin(theta) * sin(phi);
+		p[2] = rad * cos(theta);
+        
+		p = p + origin; // translate appropriately
+        
+		return p;
+	}
+    
+	/** returns a random point inside a cube, normally distributed about the given origin.
+     No reason why they may not overlap */
+	static point3 cube_normal_point( point3 &origin, float radius ) {
+		point3 p;
+		p[0] = normal(engine) * radius;
+		p[1] = normal(engine) * radius;
+		p[2] = normal(engine) * radius;
+		p = p + origin;
+		return p;
+	}
+};
+
+std::random_device d;
+std::mt19937 randutils::engine = std::mt19937(d());
+std::uniform_real_distribution<float> randutils::uniform_bipolar = std::uniform_real_distribution<float>(-1.0f,1.0f);
+std::normal_distribution<float> randutils::normal = std::normal_distribution<float>();
+std::uniform_real_distribution<float> randutils::canonical = std::uniform_real_distribution<float>(0.0f,1.0f);
+
+
 
 // perlin noise
 class perlin {
@@ -131,7 +177,7 @@ public:
         result[0] = (pDiffY[2] - pDiffZ[1]) / (2*dx);
         result[1] = (pDiffZ[0] - pDiffX[2]) / (2*dx);
         result[2] = (pDiffX[1] - pDiffY[0]) / (2*dx);
-        float factor = (pos[1] + 1.0f)/4.f;
+        float factor = (pos[1] + 1.0f)/1.f;
         result = result * factor;
         result[1] = 1;
     }
@@ -196,49 +242,38 @@ public:
         
         return p;
     }
+    
+    void seed_particles(unsigned num_vort, unsigned num_trace, std::vector<vorton> &vortons, std::vector<particle> &tracers) {
+        std::random_device dev;
+        std::mt19937 rng(dev());
+        std::uniform_real_distribution<float> dist(-0.5,0.5);
+        point3 o;
+        o[1] = -1.0f;
+        for (unsigned i = 0; i < 15; i++) {
+            vorton v;
+            /* v.mPos[0] += dist(rng);
+             v.mPos[1] += dist(rng)-0.5;
+             v.mPos[2] += dist(rng);*/
+            v.mPos = randutils::sphere_point(o, 0.3f, false);
+            
+            /* v.mVorticity[0] += dist(rng);
+             v.mVorticity[1] += dist(rng);
+             v.mVorticity[2] += dist(rng);
+             v.mVorticity = v.mVorticity.normalise();*/
+            vortons.push_back(v);
+        }
+        for (unsigned i = 0; i < 20000; i++) {
+            particle p;
+            /*p.mPos[0] += dist(rng);
+             p.mPos[1] += dist(rng)-0.5;
+             p.mPos[2] += dist(rng);*/
+            
+            p.mPos = randutils::sphere_point(o, 0.3f,true);
+            //p.mPos = randutils::cube_normal_point(o, 0.5f);
+            tracers.push_back(p);
+        }
+
+    }
 };
-
-// some random utilities
-class randutils {	
-public:
-	static std::mt19937 engine;
-	static std::uniform_real_distribution<float> uniform_bipolar;
-	static std::uniform_real_distribution<float> canonical;
-	static std::normal_distribution<float> normal;
-
-	/** returns a random point inside a sphere. Subsequent points may very well overlap */
-	static point3 sphere_point( point3 &origin, float radius, bool randrad=true ) {
-		// randomly generate spherical coordinates
-		float phi = uniform_bipolar(engine) * M_PI;
-		float theta = uniform_bipolar(engine) * M_PI;
-		float rad = (randrad)? canonical(engine) * radius: radius;
-		// convert to cartesian
-		point3 p;
-		p[0] = rad * sin(theta) * cos(phi);
-		p[1] = rad * sin(theta) * sin(phi);
-		p[2] = rad * cos(theta);
-
-		p = p + origin; // translate appropriately
-
-		return p;
-	}
-
-	/** returns a random point inside a cube, normally distributed about the given origin.
-	    No reason why they may not overlap */
-	static point3 cube_normal_point( point3 &origin, float radius ) {
-		point3 p;
-		p[0] = normal(engine) * radius;
-		p[1] = normal(engine) * radius;
-		p[2] = normal(engine) * radius;
-		p = p + origin;
-		return p;
-	}
-};
-
-std::random_device d;
-std::mt19937 randutils::engine = std::mt19937(d());
-std::uniform_real_distribution<float> randutils::uniform_bipolar = std::uniform_real_distribution<float>(-1.0f,1.0f);
-std::normal_distribution<float> randutils::normal = std::normal_distribution<float>();
-std::uniform_real_distribution<float> randutils::canonical = std::uniform_real_distribution<float>(0.0f,1.0f);
 
 #endif
