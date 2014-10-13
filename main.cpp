@@ -36,7 +36,7 @@ auto gAnimationPeriod = std::chrono::duration_cast<std::chrono::high_resolution_
 std::chrono::high_resolution_clock::duration gFramePeriod; // actual time in between
 
 float gTime;
-float gTimeStep = 0.001;
+float gTimeStep = 0.01;
 
 // FUNCTION DECLARATIONS
 void display();
@@ -141,10 +141,13 @@ void display() {
     glEnable(GL_POINT_SMOOTH);
     glEnable (GL_BLEND);
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glColor4f(0.2, 0.2, 0.2, 0.8);
+    glColor4f(0.2, 0.2, 0.2, 0.1);
     for (particle &p : tracers) {
-        glBegin(GL_POINTS);
+        glBegin(GL_LINES);
         glVertex3f(p.mPos[0], p.mPos[1], p.mPos[2]);
+        glVertex3f(p.mPos[0]+p.mVel[0]*.06,
+                   p.mPos[1]+p.mVel[1]*.06,
+                   p.mPos[2]+p.mVel[2]*.06);
         glEnd();
     }
     
@@ -236,7 +239,7 @@ void idle() {
         std::unordered_set<particle*> dead;
         for (particle &p : tracers) {
             p.mVel[0] = 0;
-            p.mVel[1] = 0.5;
+            p.mVel[1] = 1;
             p.mVel[2] = 0;
             for (vorton &v: vortons) { //TODO: optmise with spatial partitioning
                 v.get_velocity_contribution(p.mVel, p.mPos);

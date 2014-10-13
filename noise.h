@@ -96,9 +96,10 @@ class curlnoise {
 protected:
     float time; // simulation time
     float dx; // for the finite difference
+    float dv; // for the other finite difference
     
 public:
-    curlnoise() : time(0), dx(1e-4) {}; // TODO: is this a sensible dx?
+    curlnoise() : time(0), dx(1e-3), dv(5e-2) {}; // TODO: is this a sensible dx?
     virtual ~curlnoise() {}
     
     // no prizes for guessing what this does
@@ -130,7 +131,9 @@ public:
         result[0] = (pDiffY[2] - pDiffZ[1]) / (2*dx);
         result[1] = (pDiffZ[0] - pDiffX[2]) / (2*dx);
         result[2] = (pDiffX[1] - pDiffY[0]) / (2*dx);
-        result[1] += 0.6;
+        float factor = (pos[1] + 1.0f)/4.0f;
+        result = result * factor;
+        result[1] += 1;
     }
     
     // updates the velocity and the vorticity at the same time
@@ -141,12 +144,12 @@ public:
         vec3 vPlusX,vNegX,vPlusY, vNegY, vPlusZ, vNegZ;
         vec3 p1,p2,p3,p4,p5,p6;
         p1 = p2 = p3 = p4 = p5 = p6 = pos;
-        p1[0] += dx;
-        p2[0] -= dx;
-        p3[1] += dx;
-        p4[1] -= dx;
-        p5[2] += dx;
-        p6[2] -= dx;
+        p1[0] += dv;
+        p2[0] -= dv;
+        p3[1] += dv;
+        p4[1] -= dv;
+        p5[2] += dv;
+        p6[2] -= dv;
         get_velocity(p1, vPlusX);
         get_velocity(p2, vNegX);
         get_velocity(p3, vPlusY);
@@ -159,9 +162,9 @@ public:
         vec3 vDiffX = vPlusX - vNegX;
         vec3 vDiffY = vPlusY - vNegY;
         vec3 vDiffZ = vPlusZ - vNegZ;
-        vort[0] = (vDiffY[2] - vDiffZ[1]) / (2*dx);
-        vort[1] = (vDiffZ[0] - vDiffX[2]) / (2*dx);
-        vort[2] = (vDiffX[1] - vDiffY[0]) / (2*dx);
+        vort[0] = (vDiffY[2] - vDiffZ[1]) / (2*dv);
+        vort[1] = (vDiffZ[0] - vDiffX[2]) / (2*dv);
+        vort[2] = (vDiffX[1] - vDiffY[0]) / (2*dv);
     }
     
 };
