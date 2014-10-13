@@ -145,7 +145,7 @@ protected:
     float dv; // for the other finite difference
     
 public:
-    curlnoise() : time(0), dx(1e-4), dv(1e-1) {}; // TODO: is this a sensible dx?
+    curlnoise() : time(0), dx(1e-4), dv(8e-2) {}; // TODO: is this a sensible dx?
     virtual ~curlnoise() {}
     
     // no prizes for guessing what this does
@@ -249,7 +249,7 @@ public:
         std::uniform_real_distribution<float> dist(-0.5,0.5);
         point3 o;
         o[1] = -1.0f;
-        for (unsigned i = 0; i < 15; i++) {
+        for (unsigned i = 0; i < num_vort; i++) {
             vorton v;
             /* v.mPos[0] += dist(rng);
              v.mPos[1] += dist(rng)-0.5;
@@ -262,13 +262,13 @@ public:
              v.mVorticity = v.mVorticity.normalise();*/
             vortons.push_back(v);
         }
-        for (unsigned i = 0; i < 20000; i++) {
+        for (unsigned i = 0; i < num_trace; i++) {
             particle p;
             /*p.mPos[0] += dist(rng);
              p.mPos[1] += dist(rng)-0.5;
              p.mPos[2] += dist(rng);*/
             
-            p.mPos = randutils::sphere_point(o, 0.3f,true);
+            p.mPos = randutils::sphere_point(o, 0.3f,false);
             //p.mPos = randutils::cube_normal_point(o, 0.5f);
             tracers.push_back(p);
         }

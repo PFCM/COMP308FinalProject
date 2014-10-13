@@ -37,10 +37,10 @@ auto gAnimationPeriod = std::chrono::duration_cast<std::chrono::high_resolution_
 std::chrono::high_resolution_clock::duration gFramePeriod; // actual time in between
 
 float gTime;
-float gTimeStep = 0.005;
+float gTimeStep = 0.01;
 
 // DEBUGGING
-bool particle_lines = false;
+bool particle_lines = true;
 
 // FUNCTION DECLARATIONS
 void display();
@@ -132,8 +132,8 @@ void display() {
     glEnable(GL_LIGHT0);
     glEnable(GL_LIGHTING);
     glPointSize(1);
-    glColor3f(0.0,0.5,0.5);
-    /*for (vorton &v : vortons) {
+    /*glColor3f(0.0,0.5,0.5);
+    for (vorton &v : vortons) {
         //glBegin(GL_POINTS);
         //glVertex3f(v.mPos[0], v.mPos[1], v.mPos[2]);
         glPushMatrix();
@@ -147,14 +147,14 @@ void display() {
     glEnable(GL_POINT_SMOOTH);
     glEnable (GL_BLEND);
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glColor4f(0.0, 0.5, 0.5, 0.5);
+    glColor4f(0.0, 0.0, 0.0, 0.1);
     for (particle &p : tracers) {
         if (particle_lines) {
         glBegin(GL_LINES);
         glVertex3f(p.mPos[0], p.mPos[1], p.mPos[2]);
-        glVertex3f(p.mPos[0]+p.mVel[0]*.06,
-                   p.mPos[1]+p.mVel[1]*.06,
-                   p.mPos[2]+p.mVel[2]*.06);
+        glVertex3f(p.mPos[0]-p.mVel[0]*gTimeStep,
+                   p.mPos[1]-p.mVel[1]*gTimeStep,
+                   p.mPos[2]-p.mVel[2]*gTimeStep);
         glEnd();
         } else {
             glBegin(GL_POINTS);
@@ -170,9 +170,10 @@ void display() {
     glMatrixMode(GL_MODELVIEW);
     glPushMatrix();
     glLoadIdentity();
+    glDisable(GL_BLEND);
+    glColor3f(0.0, 0.0, 0.0);
     
     glRasterPos2i(10, 10);
-    glColor4f(0.0, 0.0, 0.0, 1.0);
     
     std::chrono::milliseconds millis = std::chrono::duration_cast<std::chrono::milliseconds>(gFramePeriod);
     std::stringstream s;
@@ -205,7 +206,7 @@ void mouse(int button, int state, int x, int y) {
 		mousePos.y = y;
         
         if (glutGetModifiers() == GLUT_ACTIVE_SHIFT) {
-            flow.seed_particles(15, 20000, vortons, tracers);
+            flow.seed_particles(1, 20000, vortons, tracers);
         }
 	}
     
@@ -273,31 +274,7 @@ void idle() {
         
         flow.advance_time(gTimeStep);
         concurrent_tools::parallel_for(0, tracers.size(), update_tracer, 5000);
-//        std::unordered_set<particle*> dead
-//        for (particle &p : tracers) {
-//            p.mVel[0] = 0;
-//            p.mVel[1] = 1;
-//            p.mVel[2] = 0;
-//            for (vorton &v: vortons) { //TODO: optmise with spatial partitioning
-//                v.get_velocity_contribution(p.mVel, p.mPos);
-//            }
-//            
-//            // midpoint integration again, may as well be consistent
-//            midx = p.mPos + 0.5f*gTimeStep*p.mVel;
-//            for (vorton &v: vortons) { //TODO: optmise with spatial partitioning
-//                v.get_velocity_contribution(p.mVel, midx);
-//            }
-//            p.mPos = p.mPos + (gTimeStep*p.mVel)*0.8;
-//            
-	    /*  if (p.mPos[0] > 1.0 || p.mPos[0] < -1.0 ||
-                p.mPos[1] > 1.0 || p.mPos[1] < -1.0 ||
-                p.mPos[2] > 1.0 || p.mPos[1] < -1.0)
-                dead.insert(&p);*/
- //       }
-	/* tracers.erase(std::remove_if(tracers.begin(), tracers.end(),
-                                  [&](particle &p) {
-                                      return dead.find(&p) != dead.end();
-				      }));*/
+
         
         glutPostRedisplay();
     }
@@ -307,7 +284,7 @@ void init() {
     glClearColor(1.0, 1.0, 1.0, 1.0);
     reshape(gWidth, gHeight);
     
-    flow.seed_particles(15, 20000, vortons, tracers);
+    flow.seed_particles(20, 50000, vortons, tracers);
 }
 
 void reshape(int w, int h) {
