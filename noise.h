@@ -99,7 +99,7 @@ protected:
     float dv; // for the other finite difference
     
 public:
-    curlnoise() : time(0), dx(1e-4), dv(5e-2) {}; // TODO: is this a sensible dx?
+    curlnoise() : time(0), dx(1e-4), dv(1e-1) {}; // TODO: is this a sensible dx?
     virtual ~curlnoise() {}
     
     // no prizes for guessing what this does
@@ -131,9 +131,9 @@ public:
         result[0] = (pDiffY[2] - pDiffZ[1]) / (2*dx);
         result[1] = (pDiffZ[0] - pDiffX[2]) / (2*dx);
         result[2] = (pDiffX[1] - pDiffY[0]) / (2*dx);
-        float factor = (pos[1] + 1.0f)/2.0f;
+        float factor = (pos[1] + 1.0f)/4.f;
         result = result * factor;
-        result[1] += 1;
+        result[1] = 1;
     }
     
     // updates the velocity and the vorticity at the same time

@@ -37,7 +37,7 @@ auto gAnimationPeriod = std::chrono::duration_cast<std::chrono::high_resolution_
 std::chrono::high_resolution_clock::duration gFramePeriod; // actual time in between
 
 float gTime;
-float gTimeStep = 0.005;
+float gTimeStep = 0.01;
 
 // DEBUGGING
 bool particle_lines = false;
@@ -147,7 +147,7 @@ void display() {
     glEnable(GL_POINT_SMOOTH);
     glEnable (GL_BLEND);
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glColor4f(0.0, 0.2, 0.2, 0.1);
+    glColor4f(0.0, 0.6, 0.6, 0.1);
     for (particle &p : tracers) {
         if (particle_lines) {
         glBegin(GL_LINES);
@@ -267,7 +267,7 @@ void idle() {
         }
         
         flow.advance_time(gTimeStep);
-        concurrent_tools::parallel_for(0, tracers.size(), update_tracer, 1000);
+        concurrent_tools::parallel_for(0, tracers.size(), update_tracer, 10000);
 //        std::unordered_set<particle*> dead
 //        for (particle &p : tracers) {
 //            p.mVel[0] = 0;
@@ -308,12 +308,12 @@ void init() {
     std::uniform_real_distribution<float> dist(-0.5,0.5);
     point3 o;
     o[1] = -0.5f;
-    for (unsigned i = 0; i < 10; i++) {
+    for (unsigned i = 0; i < 20; i++) {
         vorton v;
 	/* v.mPos[0] += dist(rng);
         v.mPos[1] += dist(rng)-0.5;
         v.mPos[2] += dist(rng);*/
-	v.mPos = randutils::sphere_point(o, 0.25, false);
+	v.mPos = randutils::sphere_point(o, 0.5f, false);
         
         v.mVorticity[0] += dist(rng);
         v.mVorticity[1] += dist(rng);
@@ -321,7 +321,7 @@ void init() {
         v.mVorticity = v.mVorticity.normalise();
         vortons.push_back(v);
     }
-    for (unsigned i = 0; i < 100000; i++) {
+    for (unsigned i = 0; i < 20000; i++) {
         particle p;
         /*p.mPos[0] += dist(rng);
         p.mPos[1] += dist(rng)-0.5;
