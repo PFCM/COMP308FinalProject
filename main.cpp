@@ -37,10 +37,10 @@ auto gAnimationPeriod = std::chrono::duration_cast<std::chrono::high_resolution_
 std::chrono::high_resolution_clock::duration gFramePeriod; // actual time in between
 
 float gTime;
-float gTimeStep = 0.01;
+float gTimeStep = 0.005;
 
 // DEBUGGING
-bool particle_lines = true;
+bool particle_lines =true;
 
 // FUNCTION DECLARATIONS
 void display();
@@ -159,7 +159,11 @@ void display() {
         } else {
             glBegin(GL_POINTS);
             glVertex3f(p.mPos[0], p.mPos[1], p.mPos[2]);
-            glEnd();
+            glEnd();/*
+            glPushMatrix();
+            glTranslatef(p.mPos[0], p.mPos[1], p.mPos[2]);
+            glutSolidSphere(0.05, 12, 12);
+            glPopMatrix();*/
         }
     }
     
@@ -273,7 +277,7 @@ void idle() {
         }
         
         flow.advance_time(gTimeStep);
-        concurrent_tools::parallel_for(0, tracers.size(), update_tracer, 5000);
+        concurrent_tools::parallel_for(0, tracers.size(), update_tracer, 1000);
 
         
         glutPostRedisplay();
@@ -284,7 +288,7 @@ void init() {
     glClearColor(1.0, 1.0, 1.0, 1.0);
     reshape(gWidth, gHeight);
     
-    flow.seed_particles(20, 50000, vortons, tracers);
+    flow.seed_particles(20, 100000, vortons, tracers);
 }
 
 void reshape(int w, int h) {

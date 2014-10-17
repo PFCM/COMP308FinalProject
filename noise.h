@@ -145,7 +145,7 @@ protected:
     float dv; // for the other finite difference
     
 public:
-    curlnoise() : time(0), dx(1e-4), dv(8e-2) {}; // TODO: is this a sensible dx?
+    curlnoise() : time(0), dx(1e-4), dv(1e-2) {}; // TODO: is this a sensible dx?
     virtual ~curlnoise() {}
     
     // no prizes for guessing what this does
@@ -268,7 +268,7 @@ public:
              p.mPos[1] += dist(rng)-0.5;
              p.mPos[2] += dist(rng);*/
             
-            p.mPos = randutils::sphere_point(o, 0.3f,false);
+            p.mPos = randutils::sphere_point(o, 0.3f,true);
             //p.mPos = randutils::cube_normal_point(o, 0.5f);
             tracers.push_back(p);
         }
