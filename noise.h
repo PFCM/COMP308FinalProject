@@ -228,6 +228,7 @@ public:
         // some seriously magic numbers
         // but also seriously, we sample the noise at offsets because
         // in theory they should not be correlated
+	// this may be sufficient
         p[0] = pnoise(x, y, z);
         p[1] = pnoise(y+31.416f,  z-47.853f, x+12.793f);
         p[2] = pnoise(z-233.145f, x-113.408f, y-185.31f);
@@ -255,7 +256,7 @@ public:
              v.mPos[1] += dist(rng)-0.5;
              v.mPos[2] += dist(rng);*/
             v.mPos = randutils::sphere_point(o, 0.3f, false);
-            
+	    v.mLife = 600; // these need to live longer than the tracers
             /* v.mVorticity[0] += dist(rng);
              v.mVorticity[1] += dist(rng);
              v.mVorticity[2] += dist(rng);
@@ -267,8 +268,8 @@ public:
             /*p.mPos[0] += dist(rng);
              p.mPos[1] += dist(rng)-0.5;
              p.mPos[2] += dist(rng);*/
-            
-            p.mPos = randutils::sphere_point(o, 0.3f,false);
+            p.mPos = randutils::sphere_point(o, 0.3f,true);
+	    p.mLife = (int)((dist(rng)+0.5)*600);
             //p.mPos = randutils::cube_normal_point(o, 0.5f);
             tracers.push_back(p);
         }

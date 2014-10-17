@@ -20,7 +20,7 @@ public:
                  mVel(),
                  mAngVel(),
                  mSize(0),
-                 mDob(0)
+                 mLife(300)
     {}
     
     
@@ -28,7 +28,7 @@ public:
     point3 mVel; // velocity in word coords
     point3 mAngVel; // angular velocity
     float mSize; // how big?
-    int mDob; // date of birth
+    int mLife; // am I alive?
     
 };
 #endif
