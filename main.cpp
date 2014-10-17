@@ -40,7 +40,7 @@ float gTime;
 float gTimeStep = 0.005;
 
 // DEBUGGING
-bool particle_lines =true;
+bool particle_lines = false;
 
 // FUNCTION DECLARATIONS
 void display();
@@ -132,7 +132,7 @@ void display() {
     glEnable(GL_LIGHT0);
     glEnable(GL_LIGHTING);
     glPointSize(1);
-    /*glColor3f(0.0,0.5,0.5);
+    glColor3f(0.0,0.5,0.5);
     for (vorton &v : vortons) {
         //glBegin(GL_POINTS);
         //glVertex3f(v.mPos[0], v.mPos[1], v.mPos[2]);
@@ -141,14 +141,15 @@ void display() {
         glutSolidSphere(.03, 8,8);
         glPopMatrix();
         //glEnd();
-	}*/
+	}
     
     glDisable(GL_LIGHTING);
     glEnable(GL_POINT_SMOOTH);
     glEnable (GL_BLEND);
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glColor4f(0.0, 0.0, 0.0, 0.1);
     for (particle &p : tracers) {
+	    float col = (300-p.mLife)/300.0;
+	    glColor4f(col, col, col, (1-col)*0.1);
         if (particle_lines) {
         glBegin(GL_LINES);
         glVertex3f(p.mPos[0], p.mPos[1], p.mPos[2]);
@@ -159,11 +160,7 @@ void display() {
         } else {
             glBegin(GL_POINTS);
             glVertex3f(p.mPos[0], p.mPos[1], p.mPos[2]);
-            glEnd();/*
-            glPushMatrix();
-            glTranslatef(p.mPos[0], p.mPos[1], p.mPos[2]);
-            glutSolidSphere(0.05, 12, 12);
-            glPopMatrix();*/
+            glEnd();
         }
     }
     
@@ -210,7 +207,7 @@ void mouse(int button, int state, int x, int y) {
 		mousePos.y = y;
         
         if (glutGetModifiers() == GLUT_ACTIVE_SHIFT) {
-            flow.seed_particles(1, 20000, vortons, tracers);
+            flow.seed_particles(10, 100000, vortons, tracers);
         }
 	}
     
@@ -254,7 +251,12 @@ void update_tracer(unsigned i) {
         v.get_velocity_contribution(p.mVel, midx);
     }
     p.mPos = p.mPos + (gTimeStep*p.mVel)*0.8;
+    p.mLife--;
     
+}
+
+bool is_dead(particle &p) {
+	return p.mLife < 0;
 }
 
 void idle() {
@@ -274,11 +276,21 @@ void idle() {
             //v.mVorticity = v.mVorticity.normalise();
             //v.mVel[1] += 1;
             v.mPos = v.mPos + (gTimeStep*v.mVel)*0.8;
+	    v.mLife--;
         }
         
         flow.advance_time(gTimeStep);
-        concurrent_tools::parallel_for(0, tracers.size(), update_tracer, 1000);
+        concurrent_tools::parallel_for(0, tracers.size(), update_tracer, 5000);
 
+	// probably parallelise this
+	tracers.erase( std::remove_if( tracers.begin(),
+				       tracers.end(),
+				       is_dead ),
+		       tracers.end() );
+	vortons.erase( std::remove_if( vortons.begin(),
+				       vortons.end(),
+				       is_dead ),
+		       vortons.end() );
         
         glutPostRedisplay();
     }
@@ -288,12 +300,12 @@ void init() {
     glClearColor(1.0, 1.0, 1.0, 1.0);
     reshape(gWidth, gHeight);
     
-    flow.seed_particles(20, 100000, vortons, tracers);
+    flow.seed_particles(10, 100000, vortons, tracers);
 }
 
 void reshape(int w, int h) {
     if (h == 0)
-        h =1;
+	    h =1;
     glViewport(0,0,w,h);
     gWidth = w;
     gHeight = h;
@@ -307,4 +319,7 @@ void reshape(int w, int h) {
               0.0,1.0,0.0);
     glutPostRedisplay();
     std::cout << "reshaped\n";
+
+    gWidth = w;
+    gHeight = h;
 }
