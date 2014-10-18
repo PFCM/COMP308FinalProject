@@ -335,7 +335,7 @@ void update_tracer(unsigned i) {
     particle &p = tracers[i];
     vec3 midx;
     p.mVel[0] = 0;
-    p.mVel[1] = 0.1;//1;
+    p.mVel[1] = 0.5;//1;
     p.mVel[2] = 0;
     for (vorton &v: vortons) { //TODO: optmise with spatial partitioning
         v.get_velocity_contribution(p.mVel, p.mPos);
@@ -366,9 +366,9 @@ void idle() {
         vec3 midx; // for the midpoint integration, which is more stable
         for (vorton &v : vortons) {
             flow->vorticity_velocity(v.mPos, v.mVel, v.mVorticity);
-            midx = v.mPos + 0.5f*gTimeStep*(v.mVel*0.6);
+            midx = v.mPos + 0.5f*gTimeStep*(v.mVel*0.5);
             flow->get_velocity(midx, v.mVel);
-            v.mPos = v.mPos + (gTimeStep*(v.mVel*0.6));
+            v.mPos = v.mPos + (gTimeStep*(v.mVel*0.5));
             v.mLife--;
         }
         
