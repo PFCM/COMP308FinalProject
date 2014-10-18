@@ -50,17 +50,23 @@ public:
         // let us get the difference in location between us and them
         vec3 diff = otherPos-mPos;
         // the distance is the length of this vector
-        float dist = diff.length()+0.001;
+        float dist = diff.length()+0.0001;
         vec3 ndiff = diff * (1.0/dist);
         // the direction of the component we are adding to the velocity
         // is going to be the cross product of the difference and the vorticity
-        vec3 cross = crossproduct(mVorticity, ndiff);
-        float weight = (dist > mRadius)?(1.0/(dist*0.5 + dist*dist*1.5)) * 0.02 : 0;
+        vec3 cross = crossproduct(mVorticity.normalise(), ndiff);
+        float weight = (dist > mRadius)?(1.0/(dist*0.5 + dist*dist*1.5)) * 0.04 : 0.01;
         otherVel = otherVel + (cross*weight);
-        otherVel = otherVel - (ndiff * weight)*0.01;
+        if (dist > 1.0) {
+            otherVel = otherVel - (ndiff*weight);//0.1);
+            otherVel = otherVel + mVel * weight* 0.8;
+            
+        } else {
+            otherVel = otherVel + mVel * weight* 0.1;
+        }
     }
     
-    float mRadius = 0.01; // radius of a vorton, used to avoid weirdness when too close
+    float mRadius = 0.001; // radius of a vorton, used to avoid weirdness when too close
     vec3 mVorticity;
     
     point3 &position() {

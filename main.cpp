@@ -24,6 +24,17 @@ GLuint gMainWindow;
 GLint gWidth=500, gHeight=500;
 unsigned hardware_threads;
 
+typedef enum {
+    BASIC_FLOW, RING_FLOW,
+    NUM_FLOWS
+} FlowType;
+
+std::string flow_type_strings[] = {
+  "basic", "ring"
+};
+
+FlowType flow_type = BASIC_FLOW;
+
 G308_Point mousePos;
 G308_Point lastMousePos;
 quaternion cameraRotation;
@@ -34,15 +45,16 @@ std::vector<vorton> vortons;
 std::vector<particle> tracers; // what get affected by the vortons
 
 // TIMING
-auto gAnimationPeriod = std::chrono::duration_cast<std::chrono::high_resolution_clock::duration>(std::chrono::milliseconds(1000/60));
+auto gAnimationPeriod = std::chrono::duration_cast<std::chrono::high_resolution_clock::duration>(std::chrono::milliseconds(1000/30));
 std::chrono::high_resolution_clock::duration gFramePeriod; // actual time in between
 
 float gTime;
-float gTimeStep = 0.01;
+float gTimeStep = 0.008;
 
 // DEBUGGING
 bool particle_lines = false;
 bool display_vortons= false;
+bool show_info      = true;
 
 // FUNCTION DECLARATIONS
 void display();
@@ -51,6 +63,8 @@ void init();
 void reshape(int x, int y);
 void mouse(int state, int button, int x, int y);
 void mouseDrag(int x, int y);
+void keyboard( unsigned char key, int x, int y );
+void print_info();
 
 void update_tracer(unsigned); // updates a single tracer
 
@@ -78,12 +92,13 @@ int main(int argc, char * argv[])
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     
     
-
+    
     
     glutDisplayFunc(display);
     glutIdleFunc(idle);
     glutMouseFunc(mouse);
     glutMotionFunc(mouseDrag);
+    glutKeyboardFunc(keyboard);
     
     init();
     
@@ -91,98 +106,133 @@ int main(int argc, char * argv[])
     return 0;
 }
 
+void keyboard( unsigned char key, int x, int y ) {
+    switch (key) {
+        case 13:
+            show_info = !show_info;
+            break;
+            
+        case 'f': {
+            flow_type = (FlowType)((flow_type+1)%NUM_FLOWS);
+            switch (flow_type) {
+                case BASIC_FLOW:
+                    flow = std::unique_ptr<curlnoise>(new basicflow);
+                    break;
+                    
+                case RING_FLOW:
+                    flow = std::unique_ptr<curlnoise>(new ringflow);
+                    break;
+                    
+                default:
+                    break;
+            }
+            break;
+        }
+        default:
+            break;
+    }
+}
+
 void display() {
-//    unsigned char pixels[512*512*3];
-//    vec3 pos,n;
-//    for (unsigned i = 0; i < 512; i++) {
-//        for (unsigned j = 0;j < 512; j++) {
-//            float a = i/128.0;
-//            float b = j/128.0;
-//            
-//            pos[0] = a;
-//            pos[1] = b;
-//            pos[2] = gTime;
-//            
-//            flow.get_velocity(pos, n);
-//            
-//            pixels[(j*512 + i)*3] = n[0] * 255;
-//            pixels[(j*512 + i)*3+1] = n[1] * 255;
-//            pixels[(j*512 + i)*3+2] = n[2] * 255;
-//        }
-//    }
-    
-//    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 512, 512, 0, GL_RGB,
-//                 GL_UNSIGNED_BYTE, pixels);
-    
     // test the perlin noise
     glClear(GL_COLOR_BUFFER_BIT);
-//    glColor3f(1.0,1.0,1.0);
-//    glEnable(GL_TEXTURE_2D);
-//    glBegin(GL_QUADS);
-//    glTexCoord2d(0, 0);glVertex3f(-1, -1, 0);
-//    glTexCoord2d(0, 1);glVertex3f(-1,  1, 0);
-//    glTexCoord2d(1, 1);glVertex3f( 1,  1, 0);
-//    glTexCoord2d(1, 0);glVertex3f( 1, -1, 0);
-//    glEnd();
     
     glMatrixMode(GL_MODELVIEW);
     glPushMatrix();
-    float mat[16];
-    cameraRotation.toMatrix(mat);
-    glMultMatrixf(mat);
+    {
+        float mat[16];
+        cameraRotation.toMatrix(mat);
+        glMultMatrixf(mat);
+        
+        if (display_vortons) {
+            /*glEnable(GL_LIGHT0);
+             glEnable(GL_LIGHTING);*/
+            for (vorton &v : vortons) {
+                //glBegin(GL_POINTS);
+                //glVertex3f(v.mPos[0], v.mPos[1], v.mPos[2]);
+                glColor3f(0.0,0.5,0.5);
+                glPushMatrix();
+                glTranslatef(v.mPos[0], v.mPos[1], v.mPos[2]);
+                glutSolidSphere(.03, 8,8);
+                glPopMatrix();
+                glBegin(GL_LINES);
+                {
+                    glColor3f(1.0, 0.0, 0.0);
+                    glVertex3f(v.mPos[0], v.mPos[1], v.mPos[2]);
+                    glVertex3f(v.mPos[0]+v.mVel[0]*0.1,
+                               v.mPos[1]+v.mVel[1]*0.1,
+                               v.mPos[2]+v.mVel[2]*0.1);
+                    glColor3f(0.0, 1.0, 0.0);
+                    glVertex3f(v.mPos[0], v.mPos[1], v.mPos[2]);
+                    glVertex3f(v.mPos[0]+v.mVorticity[0]*0.1,
+                               v.mPos[1]+v.mVorticity[1]*0.1,
+                               v.mPos[2]+v.mVorticity[2]*0.1);
+                }
+                glEnd();
+            }
+        }
+        
+        glDisable(GL_LIGHTING);
+        glEnable(GL_POINT_SMOOTH);
+        glEnable (GL_BLEND);
+        glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glPointSize(3);
+        for (particle &p : tracers) {
+            float col = (200-p.mLife)/200.0;
+            glColor4f(col, col, col, (1-col)*0.05);
+            if (particle_lines) {
+                glBegin(GL_LINES);
+                glVertex3f(p.mPos[0], p.mPos[1], p.mPos[2]);
+                glVertex3f(p.mPos[0]-p.mVel[0]*gTimeStep,
+                           p.mPos[1]-p.mVel[1]*gTimeStep,
+                           p.mPos[2]-p.mVel[2]*gTimeStep);
+                glEnd();
+            } else {
+                glBegin(GL_POINTS);
+                glVertex3f(p.mPos[0], p.mPos[1], p.mPos[2]);
+                glEnd();
+            }
+        }
+    }
+    glPopMatrix();
+    
+    if (show_info)
+        print_info();
+    
+    glutSwapBuffers();
+}
 
-    if (display_vortons) {
-        glEnable(GL_LIGHT0);
-        glEnable(GL_LIGHTING);
-        glColor3f(0.0,0.5,0.5);
-        for (vorton &v : vortons) {
-            //glBegin(GL_POINTS);
-            //glVertex3f(v.mPos[0], v.mPos[1], v.mPos[2]);
-            glPushMatrix();
-            glTranslatef(v.mPos[0], v.mPos[1], v.mPos[2]);
-            glutSolidSphere(.03, 8,8);
-            glPopMatrix();
-            //glEnd();
-        }
-    }
-    
-    glDisable(GL_LIGHTING);
-    glEnable(GL_POINT_SMOOTH);
-    glEnable (GL_BLEND);
-    glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glPointSize(1);
-    for (particle &p : tracers) {
-	    float col = (300-p.mLife)/300.0;
-	    glColor4f(col, col, col, (1-col)*0.1);
-        if (particle_lines) {
-        glBegin(GL_LINES);
-        glVertex3f(p.mPos[0], p.mPos[1], p.mPos[2]);
-        glVertex3f(p.mPos[0]-p.mVel[0]*gTimeStep,
-                   p.mPos[1]-p.mVel[1]*gTimeStep,
-                   p.mPos[2]-p.mVel[2]*gTimeStep);
-        glEnd();
-        } else {
-            glBegin(GL_POINTS);
-            glVertex3f(p.mPos[0], p.mPos[1], p.mPos[2]);
-            glEnd();
-        }
-    }
-    
+void print_info() {
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
     glLoadIdentity();
-    gluOrtho2D(0, gWidth, 0, gHeight);
+    gluOrtho2D(0, gWidth, gHeight, 0);
     glMatrixMode(GL_MODELVIEW);
     glPushMatrix();
     glLoadIdentity();
     glDisable(GL_BLEND);
     glColor3f(0.0, 0.0, 0.0);
     
-    glRasterPos2i(10, 10);
+    glRasterPos2i(5, 15);
     
     std::chrono::milliseconds millis = std::chrono::duration_cast<std::chrono::milliseconds>(gFramePeriod);
     std::stringstream s;
-    s << 1000.0/millis.count();
+    s << "Framerate: " << 1000.0/millis.count();
+    printtoscreen(GLUT_BITMAP_HELVETICA_12, s.str());
+    
+    glRasterPos2i(5, 30);
+    s = std::stringstream();
+    s << "Tracers: " << tracers.size();
+    printtoscreen(GLUT_BITMAP_HELVETICA_12, s.str());
+    
+    glRasterPos2i(5, 45);
+    s = std::stringstream();
+    s << "Vortons: " << vortons.size();
+    printtoscreen(GLUT_BITMAP_HELVETICA_12, s.str());
+    
+    glRasterPos2i(5, 60);
+    s = std::stringstream();
+    s << "Flow: " << flow_type_strings[flow_type];
     printtoscreen(GLUT_BITMAP_HELVETICA_12, s.str());
     
     
@@ -190,8 +240,6 @@ void display() {
     glMatrixMode(GL_PROJECTION);
     glPopMatrix();
     glMatrixMode(GL_MODELVIEW);
-    glPopMatrix();
-    glutSwapBuffers();
 }
 
 // prints at current rasterpos
@@ -211,7 +259,7 @@ void mouse(int button, int state, int x, int y) {
 		mousePos.y = y;
         
         if (glutGetModifiers() == GLUT_ACTIVE_SHIFT) {
-            flow->seed_particles(10, 70000, vortons, tracers);
+            flow->seed_particles(5, 80000, vortons, tracers);
         }
 	}
     
@@ -220,20 +268,20 @@ void mouseDrag(int x, int y) {
 	lastMousePos = mousePos;
 	mousePos.x = x;
 	mousePos.y = y;
-
+    
 	// arcball all over again
 	G308_Point scaledMouse;
 	G308_Point scaledLastMouse;
 	scaledMouse.x = ((mousePos.x / gWidth) - .5) * .9; // arcball radius .9
-	scaledMouse.y = ((mousePos.y / gHeight) - .5) * .9; 
+	scaledMouse.y = ((mousePos.y / gHeight) - .5) * .9;
 	scaledLastMouse.x = ((lastMousePos.x / gWidth) - .5) * .9;
 	scaledLastMouse.y = ((lastMousePos.y / gHeight) - .5) * .9;
 	scaledMouse.z = 0;
 	scaledLastMouse.z = 0; // so the length doesn't get stucj with a garbage value
-
+    
 	scaledMouse.z = sqrt(1 - pow(length(scaledMouse),2));
 	scaledLastMouse.z = sqrt(1 - pow(length(scaledLastMouse),2));
-
+    
 	quaternion q(scaledLastMouse, scaledMouse);
 	cameraRotation = (cameraRotation * q).normalise();
 	glutPostRedisplay();
@@ -243,7 +291,7 @@ void update_tracer(unsigned i) {
     particle &p = tracers[i];
     vec3 midx;
     p.mVel[0] = 0;
-    p.mVel[1] = 1;
+    p.mVel[1] = 0.1;//1;
     p.mVel[2] = 0;
     for (vorton &v: vortons) { //TODO: optmise with spatial partitioning
         v.get_velocity_contribution(p.mVel, p.mPos);
@@ -254,7 +302,7 @@ void update_tracer(unsigned i) {
     for (vorton &v: vortons) { //TODO: optmise with spatial partitioning
         v.get_velocity_contribution(p.mVel, midx);
     }
-    p.mPos = p.mPos + (gTimeStep*p.mVel)*0.8;
+    p.mPos = p.mPos + (gTimeStep*p.mVel);
     p.mLife--;
     
 }
@@ -274,29 +322,25 @@ void idle() {
         vec3 midx; // for the midpoint integration, which is more stable
         for (vorton &v : vortons) {
             flow->vorticity_velocity(v.mPos, v.mVel, v.mVorticity);
-            v.mVel[1] += 1;
-            //flow.get_velocity(v.mPos, v.mVel);
-            midx = v.mPos + 0.5f*gTimeStep*v.mVel;
+            midx = v.mPos + 0.5f*gTimeStep*(v.mVel*0.6);
             flow->get_velocity(midx, v.mVel);
-            //v.mVorticity = v.mVorticity.normalise();
-            v.mVel[1] += 1;
-            v.mPos = v.mPos + (gTimeStep*v.mVel)*0.8;
-	    v.mLife--;
+            v.mPos = v.mPos + (gTimeStep*(v.mVel*0.6));
+            v.mLife--;
         }
         
         flow->advance_time(gTimeStep);
         concurrent_tools::parallel_for(0, tracers.size(), update_tracer,
                                        tracers.size()/(3*hardware_threads));
-
-	// probably parallelise this
-	tracers.erase( std::remove_if( tracers.begin(),
-				       tracers.end(),
-				       is_dead ),
-		       tracers.end() );
-	vortons.erase( std::remove_if( vortons.begin(),
-				       vortons.end(),
-				       is_dead ),
-		       vortons.end() );
+        
+        // probably parallelise this
+        tracers.erase( std::remove_if( tracers.begin(),
+                                      tracers.end(),
+                                      is_dead ),
+                      tracers.end() );
+        vortons.erase( std::remove_if( vortons.begin(),
+                                      vortons.end(),
+                                      is_dead ),
+                      vortons.end() );
         
         glutPostRedisplay();
     }
@@ -306,9 +350,9 @@ void init() {
     glClearColor(1.0, 1.0, 1.0, 1.0);
     reshape(gWidth, gHeight);
     
-    flow = std::unique_ptr<curlnoise>(new ringflow());
-    
-    flow->seed_particles(10, 50000, vortons, tracers);
+    //flow = std::unique_ptr<curlnoise>(new ringflow());
+    flow = std::unique_ptr<curlnoise>(new basicflow());
+    flow->seed_particles(5, 100000, vortons, tracers);
     
     hardware_threads = std::thread::hardware_concurrency();
     std::cout << hardware_threads << " apparent number of hardware threads.\n";
@@ -332,7 +376,7 @@ void reshape(int w, int h) {
               0.0,1.0,0.0);
     glutPostRedisplay();
     std::cout << "reshaped\n";
-
+    
     gWidth = w;
     gHeight = h;
 }

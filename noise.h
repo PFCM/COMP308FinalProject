@@ -167,7 +167,7 @@ protected:
     float dv; // for the other finite difference
     
 public:
-    curlnoise() : time(0), dx(1e-4), dv(2e-1) {}; // TODO: is this a sensible dx?
+    curlnoise() : time(0), dx(1e-3), dv(1e-1) {}; // TODO: is this a sensible dx?
     virtual ~curlnoise() {}
     
     // no prizes for guessing what this does
@@ -257,17 +257,18 @@ public:
         p[1] = pnoise(y+31.416f,  z-47.853f, x+12.793f);
         p[2] = pnoise(z-233.145f, x-113.408f, y-185.31f);
         
-        p[0] += 0.25 * time * 0.001 * pnoise(x*2, y*2, z*2);
-        p[1] += 0.25 * time * 0.001 * pnoise((y+31.416f)*2,  (z-47.853f)*2, (x+12.793f)*2);
-        p[2] += 0.25 * time * 0.001 * pnoise((z-233.145f)*2, (x-113.408f)*2, (y-185.31f)*2);
+        float factor = (y + 1.0f)/2.f;
+        
+        p[0] += 0.25 * factor * pnoise(x*2, y*2, z*2);
+        p[1] += 0.25 * factor * pnoise((y+31.416f)*2,  (z-47.853f)*2, (x+12.793f)*2);
+        p[2] += 0.25 * factor * pnoise((z-233.145f)*2, (x-113.408f)*2, (y-185.31f)*2);
         
         p[0] += 0.0625 * pnoise( x*4,            y*4,            z*4);
         p[1] += 0.0625 * pnoise((y+31.416f)*4,  (z-47.853f)*4,  (x+12.793f)*4);
         p[2] += 0.0625 * pnoise((z-233.145f)*4, (x-113.408f)*4, (y-185.31f)*4);
         
         
-        float factor = (y + 1.0f)/1.f;
-        p = p * factor;
+        //p = p * factor;
         
         return p;
     }
@@ -283,8 +284,8 @@ public:
             /* v.mPos[0] += dist(rng);
              v.mPos[1] += dist(rng)-0.5;
              v.mPos[2] += dist(rng);*/
-            v.mPos = randutils::sphere_point(o, 0.3f, false);
-            v.mLife = 600; // these need to live longer than the tracers
+            v.mPos = randutils::sphere_point(o, 0.2f, true);
+            v.mLife = 200; // these need to live longer than the tracers
             /* v.mVorticity[0] += dist(rng);
              v.mVorticity[1] += dist(rng);
              v.mVorticity[2] += dist(rng);
@@ -296,8 +297,8 @@ public:
             /*p.mPos[0] += dist(rng);
              p.mPos[1] += dist(rng)-0.5;
              p.mPos[2] += dist(rng);*/
-            p.mPos = randutils::sphere_point(o, 0.3f,true);
-            p.mLife = (int)((dist(rng)+0.5)*600);
+            p.mPos = randutils::torus_point(o, 0.1f, 0.2f,false);
+            p.mLife = (int)((dist(rng)+0.5)*200);
             //p.mPos = randutils::cube_normal_point(o, 0.5f);
             tracers.push_back(p);
         }
@@ -353,11 +354,14 @@ public:
         result[0] = (pDiffY[2] - pDiffZ[1]) / (2*dx);
         result[1] = (pDiffZ[0] - pDiffX[2]) / (2*dx);
         result[2] = (pDiffX[1] - pDiffY[0]) / (2*dx);
-        //result[1] += 0.5;
         
         vec3 circ = crossproduct(pos.normalise(), circ_axis).normalise();
+        circ = crossproduct(circ, pos.normalise()).normalise();
         
         result = result + circ;
+        
+        
+        //result[1] = 1;
     }
     
     void seed_particles(unsigned num_vort, unsigned num_trace,
@@ -369,17 +373,17 @@ public:
         point3 o;
         o[1] = -1.0f;
         float t_step = 2*M_PI / (float)num_vort;
-        float theta = 0.f;
+        float theta = randutils::canonical(rng)*t_step;
         for (unsigned i = 0; i < num_vort; i++) {
             vorton v;
             v.mPos[1] = o[1];
             
-            v.mPos[0] = o[0] + 0.4 * cos(theta);
-            v.mPos[2] = o[2] + 0.4 * sin(theta);
+            v.mPos[0] = o[0] + 0.45 * cos(theta);
+            v.mPos[2] = o[2] + 0.45 * sin(theta);
             
             theta += t_step;
             
-            v.mLife = 600;
+            v.mLife = 300;
             vortons.push_back(v);
         }
         for (unsigned i = 0; i < num_trace; i++) {
@@ -387,8 +391,8 @@ public:
             /*p.mPos[0] += dist(rng);
              p.mPos[1] += dist(rng)-0.5;
              p.mPos[2] += dist(rng);*/
-            p.mPos = randutils::torus_point(o, 0.45f,0.5f, true);
-            p.mLife = (int)((dist(rng)+0.5)*600);
+            p.mPos = randutils::torus_point(o, 0.4f,0.5f, true);
+            p.mLife = (int)((dist(rng)+0.5)*200);
             //p.mPos = randutils::cube_normal_point(o, 0.5f);
             tracers.push_back(p);
         }
