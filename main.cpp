@@ -22,13 +22,14 @@
 
 GLuint gMainWindow;
 GLint gWidth=500, gHeight=500;
+unsigned hardware_threads;
 
 G308_Point mousePos;
 G308_Point lastMousePos;
 quaternion cameraRotation;
 
 
-basicflow flow;
+std::unique_ptr<curlnoise> flow;
 std::vector<vorton> vortons;
 std::vector<particle> tracers; // what get affected by the vortons
 
@@ -37,10 +38,11 @@ auto gAnimationPeriod = std::chrono::duration_cast<std::chrono::high_resolution_
 std::chrono::high_resolution_clock::duration gFramePeriod; // actual time in between
 
 float gTime;
-float gTimeStep = 0.005;
+float gTimeStep = 0.01;
 
 // DEBUGGING
 bool particle_lines = false;
+bool display_vortons= false;
 
 // FUNCTION DECLARATIONS
 void display();
@@ -129,24 +131,26 @@ void display() {
     cameraRotation.toMatrix(mat);
     glMultMatrixf(mat);
 
-    glEnable(GL_LIGHT0);
-    glEnable(GL_LIGHTING);
-    glPointSize(1);
-    glColor3f(0.0,0.5,0.5);
-    for (vorton &v : vortons) {
-        //glBegin(GL_POINTS);
-        //glVertex3f(v.mPos[0], v.mPos[1], v.mPos[2]);
-        glPushMatrix();
-        glTranslatef(v.mPos[0], v.mPos[1], v.mPos[2]);
-        glutSolidSphere(.03, 8,8);
-        glPopMatrix();
-        //glEnd();
-	}
+    if (display_vortons) {
+        glEnable(GL_LIGHT0);
+        glEnable(GL_LIGHTING);
+        glColor3f(0.0,0.5,0.5);
+        for (vorton &v : vortons) {
+            //glBegin(GL_POINTS);
+            //glVertex3f(v.mPos[0], v.mPos[1], v.mPos[2]);
+            glPushMatrix();
+            glTranslatef(v.mPos[0], v.mPos[1], v.mPos[2]);
+            glutSolidSphere(.03, 8,8);
+            glPopMatrix();
+            //glEnd();
+        }
+    }
     
     glDisable(GL_LIGHTING);
     glEnable(GL_POINT_SMOOTH);
     glEnable (GL_BLEND);
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glPointSize(1);
     for (particle &p : tracers) {
 	    float col = (300-p.mLife)/300.0;
 	    glColor4f(col, col, col, (1-col)*0.1);
@@ -207,7 +211,7 @@ void mouse(int button, int state, int x, int y) {
 		mousePos.y = y;
         
         if (glutGetModifiers() == GLUT_ACTIVE_SHIFT) {
-            flow.seed_particles(10, 100000, vortons, tracers);
+            flow->seed_particles(10, 70000, vortons, tracers);
         }
 	}
     
@@ -269,18 +273,20 @@ void idle() {
         
         vec3 midx; // for the midpoint integration, which is more stable
         for (vorton &v : vortons) {
-            flow.vorticity_velocity(v.mPos, v.mVel, v.mVorticity);
+            flow->vorticity_velocity(v.mPos, v.mVel, v.mVorticity);
+            v.mVel[1] += 1;
             //flow.get_velocity(v.mPos, v.mVel);
             midx = v.mPos + 0.5f*gTimeStep*v.mVel;
-            flow.get_velocity(midx, v.mVel);
+            flow->get_velocity(midx, v.mVel);
             //v.mVorticity = v.mVorticity.normalise();
-            //v.mVel[1] += 1;
+            v.mVel[1] += 1;
             v.mPos = v.mPos + (gTimeStep*v.mVel)*0.8;
 	    v.mLife--;
         }
         
-        flow.advance_time(gTimeStep);
-        concurrent_tools::parallel_for(0, tracers.size(), update_tracer, 5000);
+        flow->advance_time(gTimeStep);
+        concurrent_tools::parallel_for(0, tracers.size(), update_tracer,
+                                       tracers.size()/(3*hardware_threads));
 
 	// probably parallelise this
 	tracers.erase( std::remove_if( tracers.begin(),
@@ -300,7 +306,14 @@ void init() {
     glClearColor(1.0, 1.0, 1.0, 1.0);
     reshape(gWidth, gHeight);
     
-    flow.seed_particles(10, 100000, vortons, tracers);
+    flow = std::unique_ptr<curlnoise>(new ringflow());
+    
+    flow->seed_particles(10, 50000, vortons, tracers);
+    
+    hardware_threads = std::thread::hardware_concurrency();
+    std::cout << hardware_threads << " apparent number of hardware threads.\n";
+    if (hardware_threads == 0)
+        hardware_threads = 4;
 }
 
 void reshape(int w, int h) {
