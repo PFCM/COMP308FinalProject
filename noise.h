@@ -284,7 +284,7 @@ public:
             /* v.mPos[0] += dist(rng);
              v.mPos[1] += dist(rng)-0.5;
              v.mPos[2] += dist(rng);*/
-            v.mPos = randutils::sphere_point(o, 0.2f, true);
+            v.mPos = randutils::sphere_point(o, 0.3f, true);
             v.mLife = 200; // these need to live longer than the tracers
             /* v.mVorticity[0] += dist(rng);
              v.mVorticity[1] += dist(rng);
@@ -297,7 +297,7 @@ public:
             /*p.mPos[0] += dist(rng);
              p.mPos[1] += dist(rng)-0.5;
              p.mPos[2] += dist(rng);*/
-            p.mPos = randutils::torus_point(o, 0.1f, 0.2f,false);
+            p.mPos = randutils::torus_point(o, 0.1f, 0.3f,true);
             p.mLife = (int)((dist(rng)+0.5)*200);
             //p.mPos = randutils::cube_normal_point(o, 0.5f);
             tracers.push_back(p);
@@ -356,7 +356,7 @@ public:
         result[2] = (pDiffX[1] - pDiffY[0]) / (2*dx);
         
         vec3 circ = crossproduct(pos.normalise(), circ_axis).normalise();
-        circ = crossproduct(circ, pos.normalise()).normalise();
+        //circ = crossproduct(circ, pos.normalise()).normalise();
         
         result = result + circ;
         
@@ -378,12 +378,12 @@ public:
             vorton v;
             v.mPos[1] = o[1];
             
-            v.mPos[0] = o[0] + 0.45 * cos(theta);
-            v.mPos[2] = o[2] + 0.45 * sin(theta);
+            v.mPos[0] = o[0] + 0.3 * cos(theta);
+            v.mPos[2] = o[2] + 0.3 * sin(theta);
             
             theta += t_step;
             
-            v.mLife = 300;
+            v.mLife = 200;
             vortons.push_back(v);
         }
         for (unsigned i = 0; i < num_trace; i++) {
@@ -391,7 +391,7 @@ public:
             /*p.mPos[0] += dist(rng);
              p.mPos[1] += dist(rng)-0.5;
              p.mPos[2] += dist(rng);*/
-            p.mPos = randutils::torus_point(o, 0.4f,0.5f, true);
+            p.mPos = randutils::sphere_point(o, 0.4f, true);
             p.mLife = (int)((dist(rng)+0.5)*200);
             //p.mPos = randutils::cube_normal_point(o, 0.5f);
             tracers.push_back(p);

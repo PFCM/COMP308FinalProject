@@ -34,6 +34,8 @@ std::string flow_type_strings[] = {
 };
 
 FlowType flow_type = BASIC_FLOW;
+unsigned vortons_per = 5;
+unsigned tracers_per = 80000;
 
 G308_Point mousePos;
 G308_Point lastMousePos;
@@ -64,6 +66,7 @@ void reshape(int x, int y);
 void mouse(int state, int button, int x, int y);
 void mouseDrag(int x, int y);
 void keyboard( unsigned char key, int x, int y );
+void special_keys( int key, int x, int y );
 void print_info();
 
 void update_tracer(unsigned); // updates a single tracer
@@ -99,11 +102,33 @@ int main(int argc, char * argv[])
     glutMouseFunc(mouse);
     glutMotionFunc(mouseDrag);
     glutKeyboardFunc(keyboard);
+    glutSpecialFunc(special_keys);
     
     init();
     
     glutMainLoop();
     return 0;
+}
+
+void special_keys( int key, int x, int y ) {
+    switch (key) {
+        case GLUT_KEY_UP:
+            vortons_per++;
+            break;
+        case GLUT_KEY_DOWN:
+            vortons_per--;
+            break;
+            
+        case GLUT_KEY_LEFT:
+            tracers_per -= 1000;
+            break;
+        case GLUT_KEY_RIGHT:
+            tracers_per += 1000;
+            break;
+            
+        default:
+            break;
+    }
 }
 
 void keyboard( unsigned char key, int x, int y ) {
@@ -128,6 +153,10 @@ void keyboard( unsigned char key, int x, int y ) {
             }
             break;
         }
+        case 'v':
+            display_vortons = !display_vortons;
+            break;
+            
         default:
             break;
     }
@@ -236,6 +265,16 @@ void print_info() {
     printtoscreen(GLUT_BITMAP_HELVETICA_12, s.str());
     
     
+    glRasterPos2i(5, 75);
+    s = std::stringstream();
+    s << "Vortons per: " << vortons_per;
+    printtoscreen(GLUT_BITMAP_HELVETICA_12, s.str());
+    
+    glRasterPos2i(5, 90);
+    s = std::stringstream();
+    s << "Tracers per: " << tracers_per;
+    printtoscreen(GLUT_BITMAP_HELVETICA_12, s.str());
+    
     glPopMatrix();
     glMatrixMode(GL_PROJECTION);
     glPopMatrix();
@@ -259,7 +298,7 @@ void mouse(int button, int state, int x, int y) {
 		mousePos.y = y;
         
         if (glutGetModifiers() == GLUT_ACTIVE_SHIFT) {
-            flow->seed_particles(5, 80000, vortons, tracers);
+            flow->seed_particles(vortons_per, tracers_per, vortons, tracers);
         }
 	}
     
@@ -352,7 +391,7 @@ void init() {
     
     //flow = std::unique_ptr<curlnoise>(new ringflow());
     flow = std::unique_ptr<curlnoise>(new basicflow());
-    flow->seed_particles(5, 100000, vortons, tracers);
+    flow->seed_particles(vortons_per, tracers_per, vortons, tracers);
     
     hardware_threads = std::thread::hardware_concurrency();
     std::cout << hardware_threads << " apparent number of hardware threads.\n";
