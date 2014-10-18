@@ -250,28 +250,33 @@ void print_info() {
     printtoscreen(GLUT_BITMAP_HELVETICA_12, s.str());
     
     glRasterPos2i(5, 30);
-    s = std::stringstream();
+    s.str("");// = std::stringstream();
+    s.clear();
     s << "Tracers: " << tracers.size();
     printtoscreen(GLUT_BITMAP_HELVETICA_12, s.str());
     
     glRasterPos2i(5, 45);
-    s = std::stringstream();
+    s.str("");
+    s.clear();
     s << "Vortons: " << vortons.size();
     printtoscreen(GLUT_BITMAP_HELVETICA_12, s.str());
     
     glRasterPos2i(5, 60);
-    s = std::stringstream();
+    s.str("");
+    s.clear();
     s << "Flow: " << flow_type_strings[flow_type];
     printtoscreen(GLUT_BITMAP_HELVETICA_12, s.str());
     
     
     glRasterPos2i(5, 75);
-    s = std::stringstream();
+    s.clear();
+    s.str("");
     s << "Vortons per: " << vortons_per;
     printtoscreen(GLUT_BITMAP_HELVETICA_12, s.str());
     
     glRasterPos2i(5, 90);
-    s = std::stringstream();
+    s.str("");
+    s.clear();
     s << "Tracers per: " << tracers_per;
     printtoscreen(GLUT_BITMAP_HELVETICA_12, s.str());
     
@@ -394,7 +399,6 @@ void init() {
     flow->seed_particles(vortons_per, tracers_per, vortons, tracers);
     
     hardware_threads = std::thread::hardware_concurrency();
-    std::cout << hardware_threads << " apparent number of hardware threads.\n";
     if (hardware_threads == 0)
         hardware_threads = 4;
 }
