@@ -1,0 +1,69 @@
+To compile:
+   %> make
+
+to run
+   %> ./smokeparticles
+
+It will take off immediately giving you a sphere full of 800000
+tracer particles and 5 vortons which will float around and
+disappear. If you shift+click, it will happen again, only
+a bit differently.
+
+Some information should be showing on the top left such
+as framerate and how many particles are still alive.
+
+
+There are a number of controls:
+
+      MOUSE
+	shift+click -- seed another set of particles
+	click+drag  -- move the camera around
+
+      KEYBOARD
+	enter   -- toggle overlay
+	v       -- show vortons as small spheres
+	      	   red line is velocity
+		   green line is vorticity
+	[ or ] 	-- increase/decrease timestep, note
+	     	   that this can have some stability
+		   or aesthetic ramifications if
+		   you aren't also fiddling with the
+		   deltas for the finite differences
+	p	-- toggle tracer particle display mode, 
+		   either fairly large dots, or thin
+		   lines. The lines' length is their
+		   velocity, this was originally for
+		   debugging but actually looks quite 
+		   nice.
+	9 or 0 	-- change the number of tracers per 
+	     	   update thread. The threading is a
+		   bit dumb and this doesn't change 
+		   much.
+	space  -- play/pause
+	8 or 7 -- increase/decrease the displacement 
+	       	  used in calculating the vorticity.
+		  smaller values will be less stable/
+		  more twitchy and weird, may explode.
+		  Larger values might be a bit boring.
+	5 or 6 -- increase/decrease the displacement
+	       	  used in calculating the velocity.
+		  Smaller values will be weirder and
+		  jumpier, larger values might be too
+		  smooth.
+	o      -- toggle between sphere or torus. This
+	       	  influences the shape in which the 
+		  tracer particles are initially 
+		  seeded.
+	i      -- toggle whether the tracer particles
+	       	  are seeded solely on the surface of
+		  the shape or not. When they are just
+		  on the surface it can be a bit easier
+		  to see what is going on.
+	UP     -- Increase the number of vortons seeded
+	       	  next time you shift+click (by 1).
+	DOWN   -- Decrease the number of vortons seeded
+	       	  next time uou shift+click (by 1).
+	LEFT   -- Decrease the number of tracers seeded
+	       	  next time you shift+click (by 1000).
+	RIGHT  -- Increase the number of tracers seeded
+	       	  next time you shift+click (by 1000).
