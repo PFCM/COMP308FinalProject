@@ -26,11 +26,11 @@ public:
 	static std::normal_distribution<float> normal;
     
 	/** returns a random point inside a sphere. Subsequent points may very well overlap */
-	static point3 sphere_point( point3 &origin, float radius, bool randrad=true ) {
+	static point3 sphere_point( point3 &origin, float radius, bool surface=true ) {
 		// randomly generate spherical coordinates
 		float phi = uniform_bipolar(engine) * M_PI;
 		float theta = uniform_bipolar(engine) * M_PI;
-		float rad = (randrad)? canonical(engine) * radius: radius;
+		float rad = (!surface)? canonical(engine) * radius: radius;
 		// convert to cartesian
 		point3 p;
 		p[0] = rad * sin(theta) * cos(phi);
@@ -53,7 +53,7 @@ public:
 		return p;
 	}
     
-    /** random sample inside a torus. probably not uniform */
+    /** random sample inside a torus. not uniformly distributed at all */
     static point3 torus_point( point3 &origin, float inRadius, float outRadius, bool surface=false ) {
         // Pretend we are sampling from a cylinder of length 2PI, then just use the height
         // as an angle
@@ -74,6 +74,26 @@ public:
         
         return p;
     }
+    
+    /** slow poisson disk around a circle */
+    static void slow_poisson_ring( point3 &origin, float radius, float distance, unsigned num, std::vector<point3> &results, bool ring=true) {
+        for (unsigned i = 0; i < num; i++) {
+            float angle = canonical(engine) * 2 * M_PI;
+            float r = (ring)? radius : canonical(engine) * radius;
+            point3 p;
+            p[1] = origin[1];
+            p[0] = r * cos(angle);
+            p[2] = r * sin(angle);
+            results.push_back(p);
+            for (unsigned j = 0; j < i; j++) // the lame part (don't make too many...)
+                if ((p-results[j]).length() < distance) {
+                    results.pop_back();
+                    i--;
+                    break;
+                }
+        }
+    }
+    
 };
 
 std::random_device d;
@@ -161,7 +181,7 @@ private:
    characteristics for a given flow
  */
 class curlnoise {
-protected:
+public:
     float time; // simulation time
     float dx; // for the finite difference
     float dv; // for the other finite difference
@@ -245,6 +265,9 @@ private:
     perlin pnoise;
     
 public:
+    bool sphere = true;
+    bool surface = false;
+    
     basicflow() : curlnoise() {};
     
     vec3 potential(float x, float y, float z) {
@@ -257,18 +280,22 @@ public:
         p[1] = pnoise(y+31.416f,  z-47.853f, x+12.793f);
         p[2] = pnoise(z-233.145f, x-113.408f, y-185.31f);
         
-        float factor = (y + 1.0f)/2.f;
+        float factor = (y + 1.0f)/1.5f;
         
         p[0] += 0.25 * factor * pnoise(x*2, y*2, z*2);
         p[1] += 0.25 * factor * pnoise((y+31.416f)*2,  (z-47.853f)*2, (x+12.793f)*2);
         p[2] += 0.25 * factor * pnoise((z-233.145f)*2, (x-113.408f)*2, (y-185.31f)*2);
         
-        p[0] += 0.0625 * pnoise( x*4,            y*4,            z*4);
-        p[1] += 0.0625 * pnoise((y+31.416f)*4,  (z-47.853f)*4,  (x+12.793f)*4);
-        p[2] += 0.0625 * pnoise((z-233.145f)*4, (x-113.408f)*4, (y-185.31f)*4);
+        p[0] += 0.0625 * factor * pnoise( x*4,            y*4,            z*4);
+        p[1] += 0.0625 * factor * pnoise((y+31.416f)*4,  (z-47.853f)*4,  (x+12.793f)*4);
+        p[2] += 0.0625 * factor * pnoise((z-233.145f)*4, (x-113.408f)*4, (y-185.31f)*4);
+        
+        p[0] += 0.015625 * factor * pnoise( x*8,            y*8,            z*8);
+        p[1] += 0.015625 * factor * pnoise((y+31.416f)*8,  (z-47.853f)*8,  (x+12.793f)*8);
+        p[2] += 0.015625 * factor * pnoise((z-233.145f)*8, (x-113.408f)*8, (y-185.31f)*8);
         
         
-        //p = p * factor;
+        p = p * factor;
         
         return p;
     }
@@ -279,13 +306,19 @@ public:
         std::uniform_real_distribution<float> dist(-0.5,0.5);
         point3 o;
         o[1] = -1.0f;
+        
+        std::vector<point3> p;
+        p.reserve(num_vort);
+        float d = M_PI / (100.0*num_vort);
+        randutils::slow_poisson_ring(o, 0.15, d, num_vort, p);
+        
         for (unsigned i = 0; i < num_vort; i++) {
             vorton v;
             /* v.mPos[0] += dist(rng);
              v.mPos[1] += dist(rng)-0.5;
              v.mPos[2] += dist(rng);*/
-            v.mPos = randutils::sphere_point(o, 0.3f, true);
-            v.mLife = 200; // these need to live longer than the tracers
+            v.mPos = p[i];//randutils::sphere_point(o, 0.3f, true);
+            v.mLife = 400; // these need to live longer than the tracers
             /* v.mVorticity[0] += dist(rng);
              v.mVorticity[1] += dist(rng);
              v.mVorticity[2] += dist(rng);
@@ -297,8 +330,11 @@ public:
             /*p.mPos[0] += dist(rng);
              p.mPos[1] += dist(rng)-0.5;
              p.mPos[2] += dist(rng);*/
-            p.mPos = randutils::torus_point(o, 0.1f, 0.3f,true);
-            p.mLife = (int)((dist(rng)+0.5)*200);
+            if (sphere)
+                p.mPos = randutils::sphere_point(o, 0.2f, surface);
+            else
+                p.mPos = randutils::torus_point(o, 0.15f, 0.25f, surface);
+            p.mLife = (int)((dist(rng)+0.5)*400);
             //p.mPos = randutils::cube_normal_point(o, 0.5f);
             tracers.push_back(p);
         }

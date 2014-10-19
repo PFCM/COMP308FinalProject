@@ -56,13 +56,14 @@ public:
         // is going to be the cross product of the difference and the vorticity
         vec3 cross = crossproduct(mVorticity.normalise(), ndiff);
         float weight = (dist > mRadius)?(1.0/(dist*0.5 + dist*dist*1.5)) * 0.04 : 0.01;
+        weight *= mVorticity.length() * 0.2;
         otherVel = otherVel + (cross*weight);
-        if (dist > 1.0) {
+        if (dist > 0.5) {
             otherVel = otherVel - (ndiff*weight);//0.1);
-            otherVel = otherVel + mVel * weight* 0.8;
+            otherVel = otherVel + mVel * weight;//* 0.8;
             
         } else {
-            otherVel = otherVel + mVel * weight* 0.1;
+            otherVel = otherVel + mVel * weight* 0.2;
         }
     }
     

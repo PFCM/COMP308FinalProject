@@ -9,12 +9,22 @@
 #ifndef noisepart_concurrencytools_h
 #define noisepart_concurrencytools_h
 #include <thread>
+#include <vector>
 #include <functional>
 
 // some attempt at a parallel-for, that might help
 // speed things up
 namespace concurrent_tools {
     static constexpr unsigned leaf_coarseness = 5000;
+    
+    
+    
+    static inline void __for(unsigned begin,
+                             unsigned end,
+                             std::function<void(unsigned)> f) {
+        for (unsigned i = begin; i < end; i++)
+            f(i);
+    }
     
     static inline void parallel_for(unsigned begin,
                                     unsigned end,
@@ -30,7 +40,27 @@ namespace concurrent_tools {
             t2.join();
         }
     }
-
+    
+    // not recursive version
+    static inline void itparallel_for(unsigned begin,
+                                      unsigned end,
+                                      std::function<void(unsigned)> f,
+                                      unsigned group_size=leaf_coarseness) {
+        unsigned num = (end-begin)/group_size + 1;
+        std::vector<std::thread> v;
+        unsigned b,e;
+        for (unsigned i = 0; i < num; i++) {
+            b = begin + i*group_size;
+            e = ((b + group_size) < end)? b+group_size : end;
+            v.push_back( std::thread( __for,b,e,f ) );
+        }
+        // wait till they are all done
+        // this is possibly irritating,
+        // maybe we are waiting on them in a weird order
+        for (unsigned i = 0; i < num; i++) {
+            v[i].join();
+        }
+    }
 }
 
 

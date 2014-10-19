@@ -30,19 +30,20 @@ typedef enum {
 } FlowType;
 
 std::string flow_type_strings[] = {
-  "basic", "ring"
+    "basic", "ring"
 };
 
 FlowType flow_type = BASIC_FLOW;
 unsigned vortons_per = 5;
 unsigned tracers_per = 80000;
+unsigned leaf_coarseness = tracers_per / 10;
 
 G308_Point mousePos;
 G308_Point lastMousePos;
 quaternion cameraRotation;
 
 
-std::unique_ptr<curlnoise> flow;
+std::unique_ptr<basicflow> flow;
 std::vector<vorton> vortons;
 std::vector<particle> tracers; // what get affected by the vortons
 
@@ -57,6 +58,7 @@ float gTimeStep = 0.008;
 bool particle_lines = false;
 bool display_vortons= false;
 bool show_info      = true;
+bool paused         = false;
 
 // FUNCTION DECLARATIONS
 void display();
@@ -103,6 +105,7 @@ int main(int argc, char * argv[])
     glutMotionFunc(mouseDrag);
     glutKeyboardFunc(keyboard);
     glutSpecialFunc(special_keys);
+    glutReshapeFunc(reshape);
     
     init();
     
@@ -133,11 +136,11 @@ void special_keys( int key, int x, int y ) {
 
 void keyboard( unsigned char key, int x, int y ) {
     switch (key) {
-        case 13:
+        case 13: // enter
             show_info = !show_info;
             break;
             
-        case 'f': {
+     /*   case 'f': {
             flow_type = (FlowType)((flow_type+1)%NUM_FLOWS);
             switch (flow_type) {
                 case BASIC_FLOW:
@@ -152,10 +155,58 @@ void keyboard( unsigned char key, int x, int y ) {
                     break;
             }
             break;
-        }
+        }*/
         case 'v':
             display_vortons = !display_vortons;
             break;
+            
+        case '[':
+            gTimeStep -= 0.0005;
+            break;
+            
+        case ']':
+            gTimeStep += 0.0005;
+            break;
+            
+        case 'p':
+            particle_lines = !particle_lines;
+            break;
+            
+        case '9':
+            leaf_coarseness -= 1000;
+            if (leaf_coarseness == 0)
+                leaf_coarseness = 1;
+            break;
+        case '0':
+            if (leaf_coarseness == 1)
+                leaf_coarseness = 1000;
+            else
+                leaf_coarseness += 1000;
+            
+        case ' ':
+            paused = !paused;
+            break;
+            
+        case '8':
+            flow->dv *= 10;
+            break;
+            
+        case '7':
+            flow->dv /= 10;
+            break;
+            
+        case '6':
+            flow->dx *= 10;
+            break;
+        case '5':
+            flow->dx /= 10;
+            break;
+            
+        case 'o':
+            flow->sphere = !flow->sphere;
+            break;
+        case 'i':
+            flow->surface = !flow->surface;
             
         default:
             break;
@@ -261,23 +312,55 @@ void print_info() {
     s << "Vortons: " << vortons.size();
     printtoscreen(GLUT_BITMAP_HELVETICA_12, s.str());
     
+    
     glRasterPos2i(5, 60);
-    s.str("");
-    s.clear();
-    s << "Flow: " << flow_type_strings[flow_type];
-    printtoscreen(GLUT_BITMAP_HELVETICA_12, s.str());
-    
-    
-    glRasterPos2i(5, 75);
     s.clear();
     s.str("");
     s << "Vortons per: " << vortons_per;
     printtoscreen(GLUT_BITMAP_HELVETICA_12, s.str());
     
-    glRasterPos2i(5, 90);
+    glRasterPos2i(5, 75);
     s.str("");
     s.clear();
     s << "Tracers per: " << tracers_per;
+    printtoscreen(GLUT_BITMAP_HELVETICA_12, s.str());
+    
+    
+    
+    glRasterPos2i(5, 90);
+    s.str("");
+    s.clear();
+    s << "Tracers per thread: " << leaf_coarseness;
+    printtoscreen(GLUT_BITMAP_HELVETICA_12, s.str());
+    
+    glRasterPos2i(5, 105);
+    s.str("");
+    s.clear();
+    s << "Timestep: " << gTimeStep;
+    printtoscreen(GLUT_BITMAP_HELVETICA_12, s.str());
+    
+    glRasterPos2i(5, 120);
+    s.str("");
+    s.clear();
+    s << "Vel spread: " << flow->dx;
+    printtoscreen(GLUT_BITMAP_HELVETICA_12, s.str());
+    
+    glRasterPos2i(5, 135);
+    s.str("");
+    s.clear();
+    s << "Vort spread: " << flow->dv;
+    printtoscreen(GLUT_BITMAP_HELVETICA_12, s.str());
+    
+    glRasterPos2i(5, 150);
+    s.str("");
+    s.clear();
+    s << "Tracer shape: " << (flow->sphere? "sphere" : "torus");
+    printtoscreen(GLUT_BITMAP_HELVETICA_12, s.str());
+    
+    glRasterPos2i(5, 165);
+    s.str("");
+    s.clear();
+    s << "Tracer surface: " << (flow->surface? "true" : "false");
     printtoscreen(GLUT_BITMAP_HELVETICA_12, s.str());
     
     glPopMatrix();
@@ -357,36 +440,38 @@ bool is_dead(particle &p) {
 
 void idle() {
     static auto lastTime = std::chrono::high_resolution_clock::now();
-    auto currentTime = std::chrono::high_resolution_clock::now();
-    if (currentTime - lastTime > gAnimationPeriod) {
-        gFramePeriod = currentTime - lastTime;
-        lastTime = currentTime;
-        gTime += gTimeStep;
-        
-        vec3 midx; // for the midpoint integration, which is more stable
-        for (vorton &v : vortons) {
-            flow->vorticity_velocity(v.mPos, v.mVel, v.mVorticity);
-            midx = v.mPos + 0.5f*gTimeStep*(v.mVel*0.5);
-            flow->get_velocity(midx, v.mVel);
-            v.mPos = v.mPos + (gTimeStep*(v.mVel*0.5));
-            v.mLife--;
+    if (!paused) {
+        auto currentTime = std::chrono::high_resolution_clock::now();
+        if (currentTime - lastTime > gAnimationPeriod) {
+            gFramePeriod = currentTime - lastTime;
+            lastTime = currentTime;
+            gTime += gTimeStep;
+            
+            vec3 midx; // for the midpoint integration, which is more stable
+            for (vorton &v : vortons) {
+                flow->vorticity_velocity(v.mPos, v.mVel, v.mVorticity);
+                midx = v.mPos + 0.5f*gTimeStep*(v.mVel*0.5);
+                flow->get_velocity(midx, v.mVel);
+                v.mPos = v.mPos + (gTimeStep*(v.mVel*0.5));
+                v.mLife--;
+            }
+            
+            flow->advance_time(gTimeStep);
+            concurrent_tools::itparallel_for(0, tracers.size(), update_tracer,
+                                           leaf_coarseness);//tracers.size()/(3*hardware_threads));
+            
+            // probably parallelise this
+            tracers.erase( std::remove_if( tracers.begin(),
+                                          tracers.end(),
+                                          is_dead ),
+                          tracers.end() );
+            vortons.erase( std::remove_if( vortons.begin(),
+                                          vortons.end(),
+                                          is_dead ),
+                          vortons.end() );
+            
+            glutPostRedisplay();
         }
-        
-        flow->advance_time(gTimeStep);
-        concurrent_tools::parallel_for(0, tracers.size(), update_tracer,
-                                       tracers.size()/(3*hardware_threads));
-        
-        // probably parallelise this
-        tracers.erase( std::remove_if( tracers.begin(),
-                                      tracers.end(),
-                                      is_dead ),
-                      tracers.end() );
-        vortons.erase( std::remove_if( vortons.begin(),
-                                      vortons.end(),
-                                      is_dead ),
-                      vortons.end() );
-        
-        glutPostRedisplay();
     }
 }
 
@@ -395,7 +480,7 @@ void init() {
     reshape(gWidth, gHeight);
     
     //flow = std::unique_ptr<curlnoise>(new ringflow());
-    flow = std::unique_ptr<curlnoise>(new basicflow());
+    flow = std::unique_ptr<basicflow>(new basicflow());
     flow->seed_particles(vortons_per, tracers_per, vortons, tracers);
     
     hardware_threads = std::thread::hardware_concurrency();
@@ -419,7 +504,4 @@ void reshape(int w, int h) {
               0.0,1.0,0.0);
     glutPostRedisplay();
     std::cout << "reshaped\n";
-    
-    gWidth = w;
-    gHeight = h;
 }
