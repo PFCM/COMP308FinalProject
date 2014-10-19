@@ -8,7 +8,7 @@ all: release
 
 release: CFLAGS += -O3
 release: main.o quaternion.o
-	$(CC) -o $@ $^ $(LIBS) $(LPATH)
+	$(CC) -o smokeparticles $^ $(LIBS) $(LPATH)
 
 debug: CFLAGS += -g
 debug: main.o quaternion.o
